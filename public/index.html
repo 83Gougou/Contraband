@@ -1,1 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
 
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>💼 Contraband Online</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="/socket.io/socket.io.js"></script>
+
+</head>
+
+<body>
+
+<div id="particles"></div>
+
+
+<!-- ECRAN LOBBY -->
+
+<section id="lobbyScreen" class="screen">
+
+    <div class="logo">
+        💼
+        <h1>CONTRABAND</h1>
+        <p>Le jeu de bluff et de corruption</p>
+    </div>
+
+
+    <div class="panel">
+
+        <h2>🎮 Créer une partie</h2>
+
+        <input 
+        id="playerName"
+        placeholder="Ton pseudo">
+
+        <button onclick="createLobby()">
+            ✨ Créer un lobby
+        </button>
+
+
+        <div class="separator">
+            OU
+        </div>
+
+
+        <input 
+        id="joinCode"
+        placeholder="Code du lobby">
+
+
+        <button onclick="joinLobby()">
+            🚪 Rejoindre
+        </button>
+
+
+    </div>
+
+
+</section>
+
+
+
+<!-- SALLE D'ATTENTE -->
+
+<section id="waitingScreen" class="screen hidden">
+
+
+<div class="panel lobby">
+
+
+<h1>
+🏦 Lobby :
+<span id="lobbyCode"></span>
+</h1>
+
+
+<h2>👥 Joueurs</h2>
+
+
+<div id="playersList"></div>
+
+
+<button onclick="startGame()">
+🚀 Lancer la partie
+</button>
+
+
+</div>
+
+
+</section>
+
+
+
+
+
+
+<!-- JEU -->
+
+<section id="gameScreen" class="hidden">
+
+
+<header>
+
+<h1>
+💼 CONTRABAND
+</h1>
+
+<div id="round">
+</div>
+
+</header>
+
+
+
+<main>
+
+
+<!-- GAUCHE -->
+
+<div class="side-card">
+
+
+<h2>
+🏦 Mon pays
+</h2>
+
+
+<div class="money-box">
+
+💰 ATM
+
+<span id="myATM">
+300
+</span>
+
+</div>
+
+
+
+<div class="money-box">
+
+🌍 Banque
+
+<span id="myBank">
+100
+</span>
+
+</div>
+
+
+</div>
+
+
+
+
+
+<!-- CENTRE -->
+
+<div class="center">
+
+
+<div id="role">
+</div>
+
+
+
+<div class="suitcase">
+
+
+<div class="case-top">
+</div>
+
+
+<div class="case-body">
+
+💼
+
+
+<div id="caseMoney">
+0
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+<div id="actions">
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+<!-- DROITE -->
+
+<div class="side-card">
+
+
+<h2>
+👥 Partie
+</h2>
+
+
+<div id="playersGame">
+
+</div>
+
+
+</div>
+
+
+
+</main>
+
+
+</section>
+
+
+
+
+
+
+
+<!-- POPUP EVENEMENTS -->
+
+
+<div id="popup">
+
+</div>
+
+
+
+
+<script src="client.js"></script>
+
+
+</body>
+
+</html>
