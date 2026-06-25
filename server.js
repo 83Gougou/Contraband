@@ -5,40 +5,38 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
-app.use(express.static("public")); // si tu mets index.html dans /public
+app.use(express.static("public")); // mets index.html dans /public
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*"
-  }
+  cors: { origin: "*" }
 });
 
-// ---- CONFIG PAR DÉFAUT ----
 const DEFAULT_SETTINGS = {
   maxPlayers: 10,
   startingATMPerPlayer: 300_000_000,
   startingThirdCountryPerPlayer: 100_000_000,
-  teamMode: true, // true = Nord/Sud, false = FFA
+  teamMode: true,
   totalGames: 50,
   loanPerPlayer: 400_000_000
 };
 
-// lobbies: { lobbyId: { hostId, players: [], settings, state } }
 const lobbies = {};
 
 function createLobby(hostSocketId, hostName, customSettings = {}) {
   const lobbyId = Math.random().toString(36).substring(2, 8);
   const settings = { ...DEFAULT_SETTINGS, ...customSettings };
 
-  lobbies[lobbyId] = {
+  const lobby = {
     id: lobbyId,
     hostId: hostSocketId,
     settings,
     players: [],
     state: {
-      currentGame: 1,
       phase: "lobby", // lobby | in-game | finished
+      currentGame: 1,
+      currentRoles: null,
+      currentBriefcase: null,
       history: []
     }
   };
@@ -54,8 +52,9 @@ function createLobby(hostSocketId, hostName, customSettings = {}) {
     connected: true
   };
 
-  lobbies[lobbyId].players.push(hostPlayer);
-  return lobbies[lobbyId];
+  lobby.players.push(hostPlayer);
+  lobbies[lobbyId] = lobby;
+  return lobby;
 }
 
 function getLobbyBySocket(socketId) {
@@ -65,26 +64,22 @@ function getLobbyBySocket(socketId) {
 }
 
 io.on("connection", (socket) => {
-  console.log("New client:", socket.id);
+  console.log("Client connected:", socket.id);
 
-  // Créer un lobby
-  socket.on("createLobby", (data, callback) => {
+  socket.on("createLobby", (data, cb) => {
     const { playerName, settings } = data;
     const lobby = createLobby(socket.id, playerName, settings || {});
     socket.join(lobby.id);
-    callback({ lobby });
+    cb({ lobby, isHost: true });
     io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Rejoindre un lobby
-  socket.on("joinLobby", (data, callback) => {
+  socket.on("joinLobby", (data, cb) => {
     const { lobbyId, playerName } = data;
     const lobby = lobbies[lobbyId];
-    if (!lobby) {
-      return callback({ error: "Lobby introuvable." });
-    }
+    if (!lobby) return cb({ error: "Lobby introuvable." });
     if (lobby.players.length >= lobby.settings.maxPlayers) {
-      return callback({ error: "Lobby plein." });
+      return cb({ error: "Lobby plein." });
     }
 
     const player = {
@@ -100,23 +95,23 @@ io.on("connection", (socket) => {
 
     lobby.players.push(player);
     socket.join(lobby.id);
-    callback({ lobby });
+    cb({ lobby, isHost: lobby.hostId === socket.id });
     io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Host met à jour les settings
   socket.on("updateSettings", (data) => {
-    const lobby = lobbies[data.lobbyId];
+    const { lobbyId, settings } = data;
+    const lobby = lobbies[lobbyId];
     if (!lobby || lobby.hostId !== socket.id) return;
-    lobby.settings = { ...lobby.settings, ...data.settings };
+    lobby.settings = { ...lobby.settings, ...settings };
     io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Assigner les équipes (Nord/Sud)
   socket.on("assignTeams", (data) => {
-    const lobby = lobbies[data.lobbyId];
-    if (!lobby || !lobby.settings.teamMode) return;
-    if (lobby.hostId !== socket.id) return;
+    const { lobbyId } = data;
+    const lobby = lobbies[lobbyId];
+    if (!lobby || lobby.hostId !== socket.id) return;
+    if (!lobby.settings.teamMode) return;
 
     let toggle = true;
     lobby.players.forEach(p => {
@@ -127,26 +122,24 @@ io.on("connection", (socket) => {
     io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Démarrer la partie
   socket.on("startGame", (data) => {
-    const lobby = lobbies[data.lobbyId];
+    const { lobbyId } = data;
+    const lobby = lobbies[lobbyId];
     if (!lobby || lobby.hostId !== socket.id) return;
     lobby.state.phase = "in-game";
     lobby.state.currentGame = 1;
     io.to(lobby.id).emit("gameStarted", lobby);
   });
 
-  // Choisir smuggler / inspector pour une "game"
   socket.on("setRoles", (data) => {
     const { lobbyId, smugglerId, inspectorId } = data;
     const lobby = lobbies[lobbyId];
-    if (!lobby) return;
+    if (!lobby || lobby.hostId !== socket.id) return;
 
     lobby.state.currentRoles = { smugglerId, inspectorId };
     io.to(lobby.id).emit("rolesUpdate", lobby.state.currentRoles);
   });
 
-  // Smuggler prépare un transport
   socket.on("smugglerPrepare", (data) => {
     const { lobbyId, amount } = data;
     const lobby = lobbies[lobbyId];
@@ -168,25 +161,22 @@ io.on("connection", (socket) => {
       smugglerId: smuggler.id
     };
 
-    io.to(roles.smugglerId).emit("briefcaseConfirmed", {
-      amount
-    });
+    io.to(roles.smugglerId).emit("briefcaseConfirmed", { amount });
     io.to(roles.inspectorId).emit("briefcaseReady");
+    io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Inspector call: pass ou doubt
   socket.on("inspectorDecision", (data) => {
     const { lobbyId, decision, doubtAmount } = data;
     const lobby = lobbies[lobbyId];
     if (!lobby) return;
 
     const roles = lobby.state.currentRoles;
-    if (!roles || !lobby.state.currentBriefcase) return;
-
     const briefcase = lobby.state.currentBriefcase;
+    if (!roles || !briefcase) return;
+
     const smuggler = lobby.players.find(p => p.id === roles.smugglerId);
     const inspector = lobby.players.find(p => p.id === roles.inspectorId);
-
     if (!smuggler || !inspector) return;
 
     let logEntry = {
@@ -196,39 +186,35 @@ io.on("connection", (socket) => {
       briefcaseAmount: briefcase.amount,
       smugglerId: smuggler.id,
       inspectorId: inspector.id,
-      result: null
+      result: ""
     };
 
     if (decision === "pass") {
-      // Si pass et il y a de l'argent -> va au Third Country
       if (briefcase.amount > 0) {
         smuggler.thirdCountry += briefcase.amount;
         smuggler.totalOutside += briefcase.amount;
-        logEntry.result = "Money passed to Third Country.";
+        logEntry.result = `PASS → ${briefcase.amount} yen passent au Third Country.`;
       } else {
-        logEntry.result = "Case empty, nothing happens.";
+        logEntry.result = "PASS → valise vide.";
       }
     } else if (decision === "doubt") {
       const called = doubtAmount || 0;
       if (briefcase.amount === 0) {
-        // indemnité: moitié du montant appelé va à l'autre pays
         const indemnity = Math.floor(called / 2);
         smuggler.thirdCountry += indemnity;
         smuggler.totalOutside += indemnity;
-        logEntry.result = `Case empty, indemnity ${indemnity} to smuggler.`;
+        logEntry.result = `DOUBT sur valise vide → indemnité ${indemnity} au smuggler.`;
       } else {
         if (called >= briefcase.amount) {
-          // inspector prend l'argent pour son pays
           inspector.thirdCountry += briefcase.amount;
           inspector.totalOutside += briefcase.amount;
-          logEntry.result = `Inspector wins ${briefcase.amount}.`;
+          logEntry.result = `DOUBT ≥ contenu → inspector gagne ${briefcase.amount}.`;
         } else {
-          // smuggler gagne tout + indemnité
           const indemnity = briefcase.amount - called;
           const totalGain = briefcase.amount + indemnity;
           smuggler.thirdCountry += totalGain;
           smuggler.totalOutside += totalGain;
-          logEntry.result = `Smuggler wins ${totalGain} (case + indemnity).`;
+          logEntry.result = `DOUBT < contenu → smuggler gagne ${totalGain} (valise + indemnité).`;
         }
       }
     }
@@ -237,19 +223,19 @@ io.on("connection", (socket) => {
     lobby.state.currentBriefcase = null;
 
     io.to(lobby.id).emit("roundResult", logEntry);
+    io.to(lobby.id).emit("lobbyUpdate", lobby);
   });
 
-  // Passer à la game suivante
   socket.on("nextGame", (data) => {
-    const lobby = lobbies[data.lobbyId];
+    const { lobbyId } = data;
+    const lobby = lobbies[lobbyId];
     if (!lobby) return;
+
     lobby.state.currentGame += 1;
 
     if (lobby.state.currentGame > lobby.settings.totalGames) {
-      // Fin de partie
       lobby.state.phase = "finished";
 
-      // Argent restant dans ATM va à l'autre pays (simplifié: réparti équitablement)
       const totalATM = lobby.players.reduce((sum, p) => sum + p.atm, 0);
       const bonusPerPlayer = Math.floor(totalATM / lobby.players.length);
 
