@@ -1,13 +1,11 @@
 {
-  "name": "contraband-jeu-anime",
+  "name": "contraband-jeu",
   "version": "1.0.0",
-  "description": "Jeu inspiré de Contraband (anime) en Node.js pour Render",
+  "description": "Jeu Contraband simplifié en Node.js pour Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "author": "toi",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.19.2"
   }
