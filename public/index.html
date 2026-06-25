@@ -5,15 +5,16 @@
   <title>Contraband Multiplayer</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1f2933, #0b1120);
+      background: radial-gradient(circle at top, #1f2933, #020617);
       color: #e5e7eb;
     }
     header {
-      padding: 16px 24px;
-      background: rgba(15, 23, 42, 0.9);
+      padding: 12px 20px;
+      background: rgba(15, 23, 42, 0.95);
       border-bottom: 1px solid #1f2937;
       display: flex;
       justify-content: space-between;
@@ -22,31 +23,39 @@
     header h1 {
       margin: 0;
       font-size: 1.4rem;
-      letter-spacing: 0.05em;
     }
     .tagline {
       font-size: 0.85rem;
       color: #9ca3af;
     }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #111827;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      border: 1px solid #1f2937;
+    }
     main {
+      padding: 20px;
       display: flex;
-      gap: 24px;
-      padding: 24px;
+      justify-content: center;
+    }
+    .screen {
+      width: 100%;
+      max-width: 900px;
+      display: none;
     }
     .card {
-      background: rgba(15, 23, 42, 0.95);
-      border-radius: 12px;
-      padding: 16px 18px;
+      background: rgba(15, 23, 42, 0.98);
+      border-radius: 16px;
+      padding: 18px 20px;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
       border: 1px solid #1f2937;
     }
-    .column {
-      flex: 1;
-      min-width: 280px;
-    }
     h2 {
       margin-top: 0;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       border-bottom: 1px solid #1f2937;
       padding-bottom: 8px;
       margin-bottom: 12px;
@@ -60,7 +69,7 @@
     input, select {
       width: 100%;
       padding: 8px 10px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #374151;
       background: #020617;
       color: #e5e7eb;
@@ -73,7 +82,7 @@
       box-shadow: 0 0 0 1px #6366f1;
     }
     button {
-      padding: 8px 14px;
+      padding: 10px 16px;
       border-radius: 999px;
       border: none;
       background: linear-gradient(135deg, #6366f1, #22c55e);
@@ -95,28 +104,24 @@
     }
     .row {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
     }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #111827;
-      font-size: 0.75rem;
+    .status {
+      font-size: 0.85rem;
       color: #9ca3af;
-      border: 1px solid #1f2937;
+      margin-top: 4px;
     }
     .players-list {
-      max-height: 220px;
-      overflow-y: auto;
       margin-top: 8px;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid #1f2937;
       background: #020617;
       padding: 8px;
+      max-height: 220px;
+      overflow-y: auto;
       font-size: 0.85rem;
     }
     .player-item {
@@ -128,169 +133,263 @@
     .player-item:last-child {
       border-bottom: none;
     }
-    .log {
-      max-height: 260px;
-      overflow-y: auto;
-      font-size: 0.8rem;
-      background: #020617;
-      border-radius: 8px;
-      border: 1px solid #1f2937;
-      padding: 8px;
-    }
-    .log-entry {
-      margin-bottom: 6px;
-      color: #9ca3af;
-    }
     .badge {
       padding: 2px 6px;
       border-radius: 999px;
       font-size: 0.7rem;
       background: #1f2937;
       color: #e5e7eb;
+      margin-left: 4px;
     }
-    .status {
+    .team-north { color: #60a5fa; }
+    .team-south { color: #f97316; }
+    .valise {
+      width: 120px;
+      height: 80px;
+      border-radius: 12px;
+      background: #f97316;
+      margin: 10px auto;
+      position: relative;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+    .valise::before {
+      content: "";
+      position: absolute;
+      top: -18px;
+      left: 30px;
+      width: 60px;
+      height: 18px;
+      border-radius: 10px 10px 0 0;
+      background: #ea580c;
+    }
+    .valise-closed {
+      border-top: 6px solid #111827;
+    }
+    .log {
+      max-height: 200px;
+      overflow-y: auto;
       font-size: 0.8rem;
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      padding: 8px;
+      margin-top: 8px;
+    }
+    .log-entry {
+      margin-bottom: 6px;
       color: #9ca3af;
-      margin-top: 4px;
     }
     footer {
-      padding: 8px 24px;
+      padding: 8px 20px;
       font-size: 0.75rem;
       color: #6b7280;
       border-top: 1px solid #1f2937;
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(15, 23, 42, 0.95);
     }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Contraband Lobby</h1>
-      <div class="tagline">Smuggle smart, doubt hard. Jusqu'à 10 joueurs.</div>
+      <h1>Contraband</h1>
+      <div class="tagline">Smuggle smart, doubt hard · Jusqu'à 10 joueurs</div>
     </div>
-    <div class="pill">
-      Render-ready · Node + Socket.io
-    </div>
+    <div class="pill">Node + Socket.io · Render-ready</div>
   </header>
 
   <main>
-    <!-- Colonne gauche: création / join lobby -->
-    <section class="column card">
-      <h2>Lobby</h2>
+    <!-- Écran 1 : Menu -->
+    <div class="screen" id="screen-menu">
+      <div class="card">
+        <h2>Menu principal</h2>
+        <label>Ton pseudo</label>
+        <input id="playerName" placeholder="Ex: YakuzaMaster" />
 
-      <label>Ton pseudo</label>
-      <input id="playerName" placeholder="Ex: YakuzaMaster" />
+        <div class="row">
+          <button id="goCreateLobbyBtn">Créer un lobby</button>
+          <button id="goJoinLobbyBtn" class="secondary">Rejoindre un lobby</button>
+        </div>
 
-      <h3 style="margin-top:12px;font-size:0.95rem;">Créer un lobby</h3>
-      <label>Max joueurs</label>
-      <input id="maxPlayers" type="number" min="2" max="10" value="10" />
-
-      <label>Argent ATM par joueur (yen)</label>
-      <input id="startingATM" type="number" value="300000000" />
-
-      <label>Argent Third Country par joueur (yen)</label>
-      <input id="startingThird" type="number" value="100000000" />
-
-      <label>Nombre de games (rounds)</label>
-      <input id="totalGames" type="number" value="50" />
-
-      <label>Mode équipe (Nord/Sud)</label>
-      <select id="teamMode">
-        <option value="true">Activé</option>
-        <option value="false">Désactivé (FFA)</option>
-      </select>
-
-      <button id="createLobbyBtn">Créer le lobby</button>
-
-      <hr style="margin:16px 0;border-color:#1f2937;" />
-
-      <h3 style="margin-top:0;font-size:0.95rem;">Rejoindre un lobby</h3>
-      <label>ID du lobby</label>
-      <input id="joinLobbyId" placeholder="Ex: ab12cd" />
-      <button id="joinLobbyBtn" class="secondary">Rejoindre</button>
-
-      <div id="lobbyStatus" class="status"></div>
-    </section>
-
-    <!-- Colonne milieu: infos lobby + roles -->
-    <section class="column card">
-      <h2>Paramètres & joueurs</h2>
-      <div id="currentLobbyId" class="status"></div>
-      <div id="settingsView" class="status"></div>
-
-      <div class="row" style="margin-top:8px;">
-        <button id="assignTeamsBtn" class="secondary">Assigner équipes</button>
-        <button id="startGameBtn">Démarrer la partie</button>
+        <div id="menuStatus" class="status"></div>
       </div>
+    </div>
 
-      <div class="players-list" id="playersList"></div>
+    <!-- Écran 2 : Création / paramètres lobby (host) -->
+    <div class="screen" id="screen-settings">
+      <div class="card">
+        <h2>Créer ton lobby</h2>
 
-      <h3 style="margin-top:12px;font-size:0.95rem;">Roles (par game)</h3>
-      <label>ID Smuggler</label>
-      <input id="smugglerIdInput" placeholder="Socket ID du smuggler" />
-      <label>ID Inspector</label>
-      <input id="inspectorIdInput" placeholder="Socket ID de l'inspector" />
-      <button id="setRolesBtn" class="secondary">Set roles</button>
+        <label>Max joueurs</label>
+        <input id="maxPlayers" type="number" min="2" max="10" value="10" />
 
-      <div id="rolesStatus" class="status"></div>
-    </section>
+        <label>Argent ATM par joueur (yen)</label>
+        <input id="startingATM" type="number" value="300000000" />
 
-    <!-- Colonne droite: gameplay customs -->
-    <section class="column card">
-      <h2>Customs room</h2>
-      <div id="gamePhase" class="status"></div>
-      <div id="gameCounter" class="status"></div>
+        <label>Argent Third Country par joueur (yen)</label>
+        <input id="startingThird" type="number" value="100000000" />
 
-      <h3 style="margin-top:12px;font-size:0.95rem;">Smuggler</h3>
-      <label>Montant à transporter (max 100M)</label>
-      <input id="smugglerAmount" type="number" value="0" />
-      <button id="smugglerPrepareBtn">Préparer la valise</button>
-      <div id="smugglerStatus" class="status"></div>
+        <label>Nombre de games</label>
+        <input id="totalGames" type="number" value="50" />
 
-      <h3 style="margin-top:12px;font-size:0.95rem;">Inspector</h3>
-      <div class="row">
-        <button id="inspectorPassBtn" class="secondary">Pass</button>
-        <button id="inspectorDoubtBtn">Doubt</button>
+        <label>Mode équipe (Nord/Sud)</label>
+        <select id="teamMode">
+          <option value="true">Activé</option>
+          <option value="false">Désactivé (FFA)</option>
+        </select>
+
+        <div class="row">
+          <button id="createLobbyBtn">Créer le lobby</button>
+          <button id="backToMenuFromSettings" class="secondary">Retour</button>
+        </div>
+
+        <div id="settingsStatus" class="status"></div>
       </div>
-      <label>Montant appelé (yen)</label>
-      <input id="inspectorDoubtAmount" type="number" value="0" />
-      <div id="inspectorStatus" class="status"></div>
+    </div>
 
-      <h3 style="margin-top:12px;font-size:0.95rem;">Log</h3>
-      <div class="log" id="logView"></div>
+    <!-- Écran 3 : Join lobby -->
+    <div class="screen" id="screen-join">
+      <div class="card">
+        <h2>Rejoindre un lobby</h2>
 
-      <button id="nextGameBtn" class="secondary" style="margin-top:8px;">Game suivante</button>
-    </section>
+        <label>ID du lobby</label>
+        <input id="joinLobbyId" placeholder="Ex: ab12cd" />
+
+        <div class="row">
+          <button id="joinLobbyBtn">Rejoindre</button>
+          <button id="backToMenuFromJoin" class="secondary">Retour</button>
+        </div>
+
+        <div id="joinStatus" class="status"></div>
+      </div>
+    </div>
+
+    <!-- Écran 4 : Lobby (tous joueurs) -->
+    <div class="screen" id="screen-lobby">
+      <div class="card">
+        <h2>Lobby</h2>
+        <div id="currentLobbyId" class="status"></div>
+        <div id="settingsView" class="status"></div>
+        <div id="hostInfo" class="status"></div>
+
+        <div class="row" style="margin-top:8px;">
+          <button id="assignTeamsBtn" class="secondary">Assigner équipes</button>
+          <button id="startGameBtn">Lancer la partie</button>
+        </div>
+
+        <div class="players-list" id="playersList"></div>
+
+        <div class="status" id="lobbyStatus"></div>
+        <button id="backToMenuFromLobby" class="secondary" style="margin-top:8px;">Quitter le lobby</button>
+      </div>
+    </div>
+
+    <!-- Écran 5 : Game (douane) -->
+    <div class="screen" id="screen-game">
+      <div class="card">
+        <h2>Game en cours</h2>
+        <div id="gamePhase" class="status"></div>
+        <div id="gameCounter" class="status"></div>
+        <div id="rolesStatus" class="status"></div>
+
+        <div class="row" style="margin-top:8px;">
+          <label>Smuggler ID</label>
+          <input id="smugglerIdInput" placeholder="Socket ID du smuggler" />
+        </div>
+        <div class="row">
+          <label>Inspector ID</label>
+          <input id="inspectorIdInput" placeholder="Socket ID de l'inspector" />
+        </div>
+        <button id="setRolesBtn" class="secondary">Set roles</button>
+
+        <hr style="margin:12px 0;border-color:#1f2937;" />
+
+        <!-- Valise visuelle -->
+        <div style="text-align:center;">
+          <div class="valise valise-closed" id="valise"></div>
+          <div class="status" id="valiseStatus">La valise est fermée.</div>
+        </div>
+
+        <!-- Smuggler UI -->
+        <h3 style="margin-top:12px;font-size:0.95rem;">Smuggler</h3>
+        <label>Montant à mettre dans la valise (max 100M)</label>
+        <input id="smugglerAmount" type="number" value="0" />
+        <button id="smugglerPrepareBtn">Préparer la valise</button>
+        <div id="smugglerStatus" class="status"></div>
+
+        <!-- Inspector UI -->
+        <h3 style="margin-top:12px;font-size:0.95rem;">Inspector</h3>
+        <div class="row">
+          <button id="inspectorPassBtn" class="secondary">PASS</button>
+          <button id="inspectorDoubtBtn">DOUBT</button>
+        </div>
+        <label>Montant appelé (yen)</label>
+        <input id="inspectorDoubtAmount" type="number" value="0" />
+        <div id="inspectorStatus" class="status"></div>
+
+        <h3 style="margin-top:12px;font-size:0.95rem;">Log</h3>
+        <div class="log" id="logView"></div>
+
+        <button id="nextGameBtn" class="secondary" style="margin-top:8px;">Game suivante</button>
+      </div>
+    </div>
+
+    <!-- Écran 6 : Résultats finaux -->
+    <div class="screen" id="screen-result">
+      <div class="card">
+        <h2>Résultats finaux</h2>
+        <div id="finalSummary" class="status"></div>
+        <div class="players-list" id="finalPlayers"></div>
+        <button id="backToMenuFromResult" class="secondary" style="margin-top:8px;">Retour au menu</button>
+      </div>
+    </div>
   </main>
 
   <footer>
-    Contraband rules adaptées en multi. Tu peux tuner les settings du lobby avant de lancer.
+    Contraband multi · Interface découpée par étapes pour que tout le monde comprenne.
   </footer>
 
   <script>
     const socket = io();
+    const $ = (id) => document.getElementById(id);
 
     let currentLobby = null;
+    let isHost = false;
 
-    const $ = (id) => document.getElementById(id);
+    function showScreen(id) {
+      document.querySelectorAll(".screen").forEach(s => s.style.display = "none");
+      $(id).style.display = "block";
+    }
+
+    function addLog(text) {
+      const log = $("logView");
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
 
     function updateLobbyUI(lobby) {
       currentLobby = lobby;
       if (!lobby) return;
 
-      $("currentLobbyId").textContent = "Lobby ID: " + lobby.id;
-
+      $("currentLobbyId").textContent = "Lobby ID : " + lobby.id;
       $("settingsView").textContent =
         `Max joueurs: ${lobby.settings.maxPlayers} · ATM: ${lobby.settings.startingATMPerPlayer} · Third: ${lobby.settings.startingThirdCountryPerPlayer} · Games: ${lobby.settings.totalGames} · Teams: ${lobby.settings.teamMode ? "ON" : "OFF"}`;
+
+      $("hostInfo").textContent = isHost
+        ? "Tu es le chef du lobby. Tu peux assigner les équipes et lancer la partie."
+        : "En attente du chef pour lancer la partie.";
 
       const list = $("playersList");
       list.innerHTML = "";
       lobby.players.forEach(p => {
         const div = document.createElement("div");
         div.className = "player-item";
+        const teamClass = p.team === "North" ? "team-north" : p.team === "South" ? "team-south" : "";
         div.innerHTML = `
           <span>${p.name} <span class="badge">${p.id}</span></span>
-          <span>${p.team ? p.team : "No team"} · ATM: ${p.atm} · Third: ${p.thirdCountry}</span>
+          <span class="${teamClass}">${p.team || "No team"} · ATM: ${p.atm} · Third: ${p.thirdCountry}</span>
         `;
         list.appendChild(div);
       });
@@ -299,16 +398,38 @@
       $("gameCounter").textContent = "Game: " + lobby.state.currentGame;
     }
 
-    function addLog(entryText) {
-      const log = $("logView");
-      const div = document.createElement("div");
-      div.className = "log-entry";
-      div.textContent = entryText;
-      log.appendChild(div);
-      log.scrollTop = log.scrollHeight;
-    }
+    // Navigation
+    showScreen("screen-menu");
 
-    // --- Boutons lobby ---
+    $("goCreateLobbyBtn").onclick = () => {
+      showScreen("screen-settings");
+    };
+
+    $("goJoinLobbyBtn").onclick = () => {
+      showScreen("screen-join");
+    };
+
+    $("backToMenuFromSettings").onclick = () => {
+      showScreen("screen-menu");
+    };
+
+    $("backToMenuFromJoin").onclick = () => {
+      showScreen("screen-menu");
+    };
+
+    $("backToMenuFromLobby").onclick = () => {
+      currentLobby = null;
+      isHost = false;
+      showScreen("screen-menu");
+    };
+
+    $("backToMenuFromResult").onclick = () => {
+      currentLobby = null;
+      isHost = false;
+      showScreen("screen-menu");
+    };
+
+    // Création lobby
     $("createLobbyBtn").onclick = () => {
       const playerName = $("playerName").value || "Host";
       const settings = {
@@ -321,43 +442,49 @@
 
       socket.emit("createLobby", { playerName, settings }, (res) => {
         if (res.error) {
-          $("lobbyStatus").textContent = res.error;
+          $("settingsStatus").textContent = res.error;
         } else {
-          $("lobbyStatus").textContent = "Lobby créé: " + res.lobby.id;
+          isHost = res.isHost;
+          $("settingsStatus").textContent = "Lobby créé: " + res.lobby.id;
           updateLobbyUI(res.lobby);
+          showScreen("screen-lobby");
         }
       });
     };
 
+    // Join lobby
     $("joinLobbyBtn").onclick = () => {
       const playerName = $("playerName").value || "Joueur";
       const lobbyId = $("joinLobbyId").value.trim();
       if (!lobbyId) {
-        $("lobbyStatus").textContent = "Entre un ID de lobby.";
+        $("joinStatus").textContent = "Entre un ID de lobby.";
         return;
       }
       socket.emit("joinLobby", { lobbyId, playerName }, (res) => {
         if (res.error) {
-          $("lobbyStatus").textContent = res.error;
+          $("joinStatus").textContent = res.error;
         } else {
-          $("lobbyStatus").textContent = "Rejoint le lobby " + res.lobby.id;
+          isHost = res.isHost;
+          $("joinStatus").textContent = "Rejoint le lobby " + res.lobby.id;
           updateLobbyUI(res.lobby);
+          showScreen("screen-lobby");
         }
       });
     };
 
+    // Host actions
     $("assignTeamsBtn").onclick = () => {
-      if (!currentLobby) return;
+      if (!currentLobby || !isHost) return;
       socket.emit("assignTeams", { lobbyId: currentLobby.id });
     };
 
     $("startGameBtn").onclick = () => {
-      if (!currentLobby) return;
+      if (!currentLobby || !isHost) return;
       socket.emit("startGame", { lobbyId: currentLobby.id });
     };
 
     $("setRolesBtn").onclick = () => {
-      if (!currentLobby) return;
+      if (!currentLobby || !isHost) return;
       const smugglerId = $("smugglerIdInput").value.trim();
       const inspectorId = $("inspectorIdInput").value.trim();
       if (!smugglerId || !inspectorId) {
@@ -371,7 +498,7 @@
       });
     };
 
-    // --- Smuggler ---
+    // Smuggler
     $("smugglerPrepareBtn").onclick = () => {
       if (!currentLobby) return;
       const amount = parseInt($("smugglerAmount").value || "0", 10);
@@ -381,7 +508,7 @@
       });
     };
 
-    // --- Inspector ---
+    // Inspector
     $("inspectorPassBtn").onclick = () => {
       if (!currentLobby) return;
       socket.emit("inspectorDecision", {
@@ -400,13 +527,13 @@
       });
     };
 
-    // --- Next game ---
+    // Next game
     $("nextGameBtn").onclick = () => {
       if (!currentLobby) return;
       socket.emit("nextGame", { lobbyId: currentLobby.id });
     };
 
-    // --- Socket events ---
+    // Socket events
     socket.on("lobbyUpdate", (lobby) => {
       updateLobbyUI(lobby);
     });
@@ -414,6 +541,7 @@
     socket.on("gameStarted", (lobby) => {
       updateLobbyUI(lobby);
       addLog("Game started.");
+      showScreen("screen-game");
     });
 
     socket.on("rolesUpdate", (roles) => {
@@ -425,18 +553,21 @@
     socket.on("briefcaseConfirmed", (data) => {
       $("smugglerStatus").textContent =
         `Valise prête avec ${data.amount} yen.`;
+      $("valiseStatus").textContent = "La valise est pleine.";
+      $("valise").classList.add("valise-closed");
       addLog(`Smuggler prépare ${data.amount}.`);
     });
 
     socket.on("briefcaseReady", () => {
       $("inspectorStatus").textContent =
-        "Valise prête. Décide: Pass ou Doubt.";
+        "Valise prête. Décide: PASS ou DOUBT.";
       addLog("Inspector peut décider.");
     });
 
     socket.on("roundResult", (entry) => {
       const txt = `Game ${entry.game} · decision=${entry.decision} · doubt=${entry.doubtAmount} · case=${entry.briefcaseAmount} → ${entry.result}`;
       addLog(txt);
+      $("valiseStatus").textContent = "La valise est vide.";
     });
 
     socket.on("gameCounterUpdate", (currentGame) => {
@@ -446,7 +577,26 @@
 
     socket.on("gameFinished", (data) => {
       addLog("Game finished. Total ATM restant: " + data.totalATM + " réparti: " + data.bonusPerPlayer + " par joueur.");
+      currentLobby = data.lobby;
       updateLobbyUI(data.lobby);
+
+      // Résumé final
+      const summary = $("finalSummary");
+      summary.textContent = `ATM restant total: ${data.totalATM} · Bonus par joueur: ${data.bonusPerPlayer}`;
+
+      const finalList = $("finalPlayers");
+      finalList.innerHTML = "";
+      data.lobby.players.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "player-item";
+        div.innerHTML = `
+          <span>${p.name}</span>
+          <span>Total hors pays: ${p.totalOutside}</span>
+        `;
+        finalList.appendChild(div);
+      });
+
+      showScreen("screen-result");
     });
   </script>
 </body>
