@@ -1,7 +1,7 @@
 {
-  "name": "contraband-jeu-anime",
+  "name": "contraband-jeu",
   "version": "1.0.0",
-  "description": "Jeu Contraband inspiré d'un anime, hébergé sur Render avec Node.js",
+  "description": "Jeu Contraband simplifié hébergé sur Render",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
