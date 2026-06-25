@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CONTRABAND - Economic Bluff Game</title>
+  <title>CONTRABAND - Jeu de Bluff Économique</title>
   <style>
     * {
       margin: 0;
@@ -139,7 +139,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       background: rgba(255, 255, 255, 0.05);
       padding: 20px;
       border-radius: 10px;
@@ -153,6 +153,28 @@
 
     .game-number {
       color: #ff6b35;
+    }
+
+    .room-code-badge {
+      background: rgba(255, 107, 53, 0.15);
+      border: 1px solid #ff6b35;
+      border-radius: 8px;
+      padding: 8px 16px;
+      text-align: center;
+    }
+
+    .room-code-label {
+      font-size: 0.75em;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .room-code-value {
+      font-size: 1.4em;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 2px;
     }
 
     .team-indicator {
@@ -232,11 +254,46 @@
       color: #aaa;
     }
 
+    /* Unassigned players list */
+    .unassigned-list {
+      list-style: none;
+      margin-bottom: 20px;
+    }
+
+    .unassigned-item {
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .assign-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .assign-btns button {
+      padding: 5px 12px;
+      font-size: 0.8em;
+    }
+
+    .btn-north {
+      background: linear-gradient(135deg, #3a6fdd 0%, #64a0ff 100%);
+    }
+
+    .btn-south {
+      background: linear-gradient(135deg, #dd3a3a 0%, #ff6464 100%);
+    }
+
     .setup-controls {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-      margin-bottom: 30px;
+      margin-top: 20px;
     }
 
     .setup-button {
@@ -408,6 +465,13 @@
       margin-top: 20px;
     }
 
+    .waiting-info {
+      color: #aaa;
+      font-style: italic;
+      padding: 10px;
+      text-align: center;
+    }
+
     @media (max-width: 1000px) {
       .lobby-content {
         grid-template-columns: 1fr;
@@ -424,6 +488,11 @@
       h1 {
         font-size: 2em;
       }
+
+      .game-header {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
     }
   </style>
 </head>
@@ -431,162 +500,189 @@
   <div class="container">
     <header>
       <h1>💼 CONTRABAND 💼</h1>
-      <p class="subtitle">An Economic Bluff Game of International Smuggling</p>
+      <p class="subtitle">Jeu de Bluff Économique sur la Contrebande Internationale</p>
     </header>
 
-    <!-- LOBBY SCREEN -->
+    <!-- ÉCRAN D'ACCUEIL -->
     <div id="lobbyScreen" class="screen active">
       <div class="lobby-content">
         <div class="lobby-box">
-          <h2>Create Game</h2>
+          <h2>Créer une Partie</h2>
           <div class="input-group">
-            <label>Your Username</label>
-            <input type="text" id="createUsername" placeholder="Enter your name">
+            <label>Votre Pseudo</label>
+            <input type="text" id="createUsername" placeholder="Entrez votre nom">
           </div>
           <div class="input-group">
-            <label>Max Players (2-10)</label>
+            <label>Nombre max de joueurs (2-10)</label>
             <input type="number" id="maxPlayers" min="2" max="10" value="6">
           </div>
-          <button class="full-width" onclick="createRoom()">Create Room</button>
+          <button class="full-width" onclick="createRoom()">Créer la Salle</button>
         </div>
 
         <div class="lobby-box">
-          <h2>Join Game</h2>
+          <h2>Rejoindre une Partie</h2>
           <div class="input-group">
-            <label>Your Username</label>
-            <input type="text" id="joinUsername" placeholder="Enter your name">
+            <label>Votre Pseudo</label>
+            <input type="text" id="joinUsername" placeholder="Entrez votre nom">
           </div>
           <div class="input-group">
-            <label>Room ID</label>
-            <input type="text" id="roomId" placeholder="Enter room ID">
+            <label>Code de la Salle</label>
+            <input type="text" id="roomIdInput" placeholder="Entrez le code de la salle">
           </div>
-          <button class="full-width" onclick="joinRoom()">Join Room</button>
+          <button class="full-width" onclick="joinRoom()">Rejoindre la Salle</button>
         </div>
       </div>
 
       <div id="lobbyError" class="error" style="display: none;"></div>
-      <div id="roomIdDisplay" style="text-align: center; color: #ff6b35; font-size: 1.2em; margin-top: 20px;"></div>
     </div>
 
-    <!-- GAME SCREEN -->
+    <!-- ÉCRAN DE JEU -->
     <div id="gameScreen" class="screen">
       <div class="game-header">
         <div class="game-info">
-          Game <span class="game-number" id="gameNumber">0/50</span>
+          Partie <span class="game-number" id="gameNumber">0/50</span>
+        </div>
+        <div class="room-code-badge">
+          <div class="room-code-label">Code de la salle</div>
+          <div class="room-code-value" id="roomCodeDisplay">—</div>
         </div>
         <div>
-          Current Turn: <span id="currentTeam" class="team-indicator team-north">NORTH</span>
+          Tour : <span id="currentTeam" class="team-indicator team-north">NORD</span>
         </div>
-        <button onclick="disconnectGame()">Leave Game</button>
+        <button onclick="disconnectGame()">Quitter la Partie</button>
       </div>
 
-      <!-- SETUP PHASE -->
+      <!-- PHASE DE CONFIGURATION -->
       <div id="setupPhase" style="display: none;">
         <div class="lobby-box" style="margin-bottom: 30px;">
-          <h2>Assign Teams</h2>
-          <p style="color: #aaa; margin-bottom: 20px;">Click players to assign them to teams</p>
-          
+          <h2>Assigner les Équipes</h2>
+          <p style="color: #aaa; margin-bottom: 20px;">Cliquez sur les boutons pour assigner chaque joueur à une équipe</p>
+
+          <!-- Joueurs non assignés -->
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #ff6b35; margin-bottom: 15px;">Joueurs en attente</h3>
+            <ul class="unassigned-list" id="unassignedList">
+              <li class="waiting-info">En attente de joueurs...</li>
+            </ul>
+          </div>
+
           <div class="team-grid">
             <div class="team-panel north">
-              <h3>🔵 Northern Country</h3>
-              <ul class="player-list" id="northTeamList"></ul>
-              <button class="full-width" onclick="selectTeamPlayers('north')">Add Players to North</button>
+              <h3>🔵 Pays du Nord</h3>
+              <ul class="player-list" id="northTeamList">
+                <li class="waiting-info">Aucun joueur assigné</li>
+              </ul>
             </div>
 
             <div class="team-panel south">
-              <h3>🔴 Southern Country</h3>
-              <ul class="player-list" id="southTeamList"></ul>
-              <button class="full-width" onclick="selectTeamPlayers('south')">Add Players to South</button>
+              <h3>🔴 Pays du Sud</h3>
+              <ul class="player-list" id="southTeamList">
+                <li class="waiting-info">Aucun joueur assigné</li>
+              </ul>
             </div>
           </div>
 
           <div class="setup-controls">
-            <button onclick="startGame()">Start Game</button>
-            <button onclick="resetTeams()">Reset Teams</button>
+            <button onclick="startGame()">▶ Démarrer la Partie</button>
+            <button onclick="resetTeams()" style="background: rgba(255,255,255,0.1); color: #aaa;">↺ Réinitialiser les Équipes</button>
           </div>
         </div>
       </div>
 
-      <!-- GAME ACTIVE PHASE -->
+      <!-- PHASE ACTIVE -->
       <div id="activePhase" style="display: none;">
         <div class="stats-grid" id="statsGrid"></div>
 
-        <!-- ROLE SELECTION -->
+        <!-- SÉLECTION DES RÔLES -->
         <div id="roleSelection" style="display: none;">
           <div class="team-grid">
             <div class="team-panel north">
-              <h3>🔵 Select Smuggler (North)</h3>
+              <h3 id="smugglerPanelTitle">🔵 Choisir le Contrebandier (Nord)</h3>
               <ul class="player-list" id="smugglerList"></ul>
             </div>
 
             <div class="team-panel south">
-              <h3>🔴 Select Customs Inspector (South)</h3>
+              <h3 id="inspectorPanelTitle">🔴 Choisir l'Inspecteur des Douanes (Sud)</h3>
               <ul class="player-list" id="inspectorList"></ul>
             </div>
           </div>
         </div>
 
-        <!-- CUSTOMS ROOM -->
+        <!-- SALLE DES DOUANES -->
         <div id="customsRoom" style="display: none;">
           <div class="customs-room">
-            <h2>Customs Inspection Room</h2>
-            <p style="color: #aaa; margin-bottom: 20px;">Soundproof • Maximum 10 minutes</p>
+            <h2>Salle d'Inspection des Douanes</h2>
+            <p style="color: #aaa; margin-bottom: 20px;">Chambre insonorisée • 10 minutes maximum</p>
 
-            <!-- SMUGGLER VIEW -->
+            <!-- VUE CONTREBANDIER -->
             <div id="smugglerView" style="display: none;">
-              <h3 style="margin-bottom: 20px;">Smuggler: Prepare Your Briefcase</h3>
+              <h3 style="margin-bottom: 20px;">Contrebandier : Préparez votre Valise</h3>
               <div class="briefcase" id="briefcaseDisplay">💰 ?</div>
               
               <div class="customs-actions">
                 <div class="money-input">
-                  <label>How much money do you want to smuggle? (Max 100M)</label>
-                  <input type="number" id="smuggleAmount" min="0" max="100000000" placeholder="Amount in yen">
+                  <label>Combien voulez-vous faire passer en contrebande ? (Max 100M)</label>
+                  <input type="number" id="smuggleAmount" min="0" max="100000000" step="1000000" placeholder="Montant en yens">
                 </div>
-                <button class="full-width" onclick="enterCustoms()">Enter Customs Room</button>
+                <button class="full-width" style="grid-column: 1 / -1;" onclick="enterCustoms()">Entrer dans la Salle des Douanes</button>
               </div>
             </div>
 
-            <!-- INSPECTOR VIEW -->
+            <!-- VUE INSPECTEUR -->
             <div id="inspectorView" style="display: none;">
-              <h3 style="margin-bottom: 20px;">Inspector: Make Your Decision</h3>
+              <h3 style="margin-bottom: 20px;">Inspecteur : Prenez votre Décision</h3>
               <div class="briefcase">?</div>
               
               <div class="customs-actions">
-                <button class="full-width setup-button" onclick="customsPass()">PASS (Let Through)</button>
-                <button class="full-width setup-button" onclick="showDoubtOptions()">DOUBT (Call Amount)</button>
+                <button class="full-width setup-button" onclick="customsPass()">LAISSER PASSER</button>
+                <button class="full-width setup-button" onclick="showDoubtOptions()">DOUTER (Déclarer le Montant)</button>
               </div>
 
               <div id="doubtOptions" style="display: none; margin-top: 20px;">
-                <label>How much money do you think is in the case?</label>
+                <label>Quel montant pensez-vous qu'il y a dans la valise ?</label>
                 <div class="doubt-slider">
-                  <input type="range" id="doubtAmount" min="0" max="100000000" step="1000000">
+                  <input type="range" id="doubtAmount" min="0" max="100000000" step="1000000" value="0">
                   <div style="text-align: center; color: #ff6b35; font-size: 1.2em;">
-                    <span id="doubtDisplay">0</span> yen
+                    <span id="doubtDisplay">0</span> yens
                   </div>
                 </div>
-                <button class="full-width" onclick="submitDoubt()">Submit Doubt</button>
-                <button class="full-width" onclick="cancelDoubt()" style="background: rgba(255, 255, 255, 0.1); color: #aaa;">Cancel</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                  <button class="full-width" onclick="submitDoubt()">Confirmer le Doute</button>
+                  <button class="full-width" onclick="cancelDoubt()" style="background: rgba(255, 255, 255, 0.1); color: #aaa;">Annuler</button>
+                </div>
               </div>
+
+              <!-- Vue spectateur -->
+              <div id="spectatorView" style="display: none; margin-top: 20px; color: #aaa; font-style: italic;">
+                En attente de la décision de l'inspecteur et du contrebandier...
+              </div>
+            </div>
+
+            <!-- VUE SPECTATEUR -->
+            <div id="spectatorCustomsView" style="display: none;">
+              <p style="color: #aaa; font-style: italic; margin-top: 20px;">
+                En attente du résultat de l'inspection...
+              </p>
             </div>
           </div>
         </div>
 
-        <!-- RESULT DISPLAY -->
+        <!-- AFFICHAGE DU RÉSULTAT -->
         <div id="resultDisplay" style="display: none;">
           <div class="result-display">
-            <div class="result-title" id="resultTitle">Result</div>
+            <div class="result-title" id="resultTitle">Résultat</div>
             <div class="result-details" id="resultDetails"></div>
-            <button class="full-width big-button" onclick="nextRound()">Next Round</button>
+            <button class="full-width big-button" onclick="nextRound()">Tour Suivant</button>
           </div>
         </div>
       </div>
 
-      <!-- GAME END PHASE -->
+      <!-- FIN DE PARTIE -->
       <div id="endPhase" style="display: none;">
         <div class="centered-content">
-          <h2 style="color: #ff6b35; margin-bottom: 30px;">🏆 Game Over 🏆</h2>
+          <h2 style="color: #ff6b35; margin-bottom: 30px;">🏆 Fin de Partie 🏆</h2>
           <div class="stats-grid" id="finalStats"></div>
-          <button class="big-button" onclick="returnToLobby()">Return to Lobby</button>
+          <button class="big-button" onclick="returnToLobby()">Retour à l'Accueil</button>
         </div>
       </div>
     </div>
@@ -598,8 +694,9 @@
     let currentPlayer = null;
     let currentRoom = null;
     let gameState = null;
-    let selectedTeamPlayers = { north: [], south: [] };
     let currentRole = null;
+    // Local team assignment tracking (by player id)
+    let localTeamAssignments = { north: [], south: [] };
 
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -611,7 +708,7 @@
       const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
 
       if (!username) {
-        showError('Enter your username');
+        showError('Veuillez entrer votre pseudo');
         return;
       }
 
@@ -620,10 +717,10 @@
 
     function joinRoom() {
       const username = document.getElementById('joinUsername').value.trim();
-      const roomId = document.getElementById('roomId').value.trim();
+      const roomId = document.getElementById('roomIdInput').value.trim();
 
       if (!username || !roomId) {
-        showError('Enter username and room ID');
+        showError('Veuillez entrer votre pseudo et le code de la salle');
         return;
       }
 
@@ -634,104 +731,120 @@
       const errorDiv = document.getElementById('lobbyError');
       errorDiv.textContent = msg;
       errorDiv.style.display = 'block';
-      setTimeout(() => errorDiv.style.display = 'none', 3000);
+      setTimeout(() => errorDiv.style.display = 'none', 4000);
     }
 
     function formatMoney(amount) {
-      return new Intl.NumberFormat('en-US').format(Math.floor(amount / 1000000)) + 'M';
+      if (amount === null || amount === undefined) return '—';
+      return new Intl.NumberFormat('fr-FR').format(Math.floor(amount / 1_000_000)) + 'M ¥';
+    }
+
+    function getTeamLabel(team) {
+      return team === 'north' ? 'NORD' : team === 'south' ? 'SUD' : '—';
     }
 
     function updateGameDisplay() {
       if (!gameState) return;
 
       document.getElementById('gameNumber').textContent = `${gameState.currentGameNumber}/${gameState.maxGames}`;
-      document.getElementById('currentTeam').className = `team-indicator team-${gameState.currentSmugglerTeam}`;
-      document.getElementById('currentTeam').textContent = gameState.currentSmugglerTeam.toUpperCase();
 
-      // Update stats
+      const teamEl = document.getElementById('currentTeam');
+      teamEl.className = `team-indicator team-${gameState.currentSmugglerTeam}`;
+      teamEl.textContent = getTeamLabel(gameState.currentSmugglerTeam);
+
+      // Mettre à jour les statistiques
       const statsGrid = document.getElementById('statsGrid');
       statsGrid.innerHTML = gameState.players.map(p => `
         <div class="stat-card">
           <div style="margin-bottom: 10px;">
             <strong>${p.username}</strong>
             <div class="team-indicator team-${p.team}" style="display: inline-block; margin-left: 10px; padding: 4px 12px; font-size: 0.8em;">
-              ${p.team.toUpperCase()}
+              ${getTeamLabel(p.team)}
             </div>
           </div>
-          <div class="stat-label">ATM Balance</div>
+          <div class="stat-label">Solde Guichet</div>
           <div class="stat-value">${formatMoney(p.atm)}</div>
-          <div class="stat-label" style="margin-top: 10px;">Third Country</div>
+          <div class="stat-label" style="margin-top: 10px;">Pays Tiers</div>
           <div class="stat-value">${formatMoney(p.thirdCountry)}</div>
-          <div class="stat-label" style="margin-top: 10px;">Total Earned</div>
+          <div class="stat-label" style="margin-top: 10px;">Total Gagné</div>
           <div class="stat-value">${formatMoney(p.totalEarned)}</div>
         </div>
       `).join('');
 
-      // Update team lists
-      updateTeamLists();
+      // Mettre à jour les listes d'équipes dans la phase de setup
+      if (gameState.gameState === 'lobby') {
+        updateSetupTeamLists();
+      }
     }
 
-    function updateTeamLists() {
+    function updateSetupTeamLists() {
       const northList = document.getElementById('northTeamList');
       const southList = document.getElementById('southTeamList');
+      const unassignedList = document.getElementById('unassignedList');
 
-      northList.innerHTML = gameState.teams.north.map(username => `
-        <li class="player-item" onclick="toggleTeamSelection('north', '${username}')">
-          <span>${username}</span>
-          <span class="player-stats">North Team</span>
-        </li>
-      `).join('');
+      const northPlayers = gameState.players.filter(p => p.team === 'north');
+      const southPlayers = gameState.players.filter(p => p.team === 'south');
+      const unassigned = gameState.players.filter(p => !p.team);
 
-      southList.innerHTML = gameState.teams.south.map(username => `
-        <li class="player-item" onclick="toggleTeamSelection('south', '${username}')">
-          <span>${username}</span>
-          <span class="player-stats">South Team</span>
-        </li>
-      `).join('');
+      northList.innerHTML = northPlayers.length
+        ? northPlayers.map(p => `
+            <li class="player-item">
+              <span>${p.username}</span>
+              <button class="btn-south" style="padding:4px 10px;font-size:0.8em;" onclick="movePlayerToTeam('${p.id}', 'south')">→ Sud</button>
+            </li>`).join('')
+        : '<li class="waiting-info">Aucun joueur assigné</li>';
+
+      southList.innerHTML = southPlayers.length
+        ? southPlayers.map(p => `
+            <li class="player-item">
+              <span>${p.username}</span>
+              <button class="btn-north" style="padding:4px 10px;font-size:0.8em;" onclick="movePlayerToTeam('${p.id}', 'north')">← Nord</button>
+            </li>`).join('')
+        : '<li class="waiting-info">Aucun joueur assigné</li>';
+
+      unassignedList.innerHTML = unassigned.length
+        ? unassigned.map(p => `
+            <li class="unassigned-item">
+              <span><strong>${p.username}</strong></span>
+              <div class="assign-btns">
+                <button class="btn-north" onclick="movePlayerToTeam('${p.id}', 'north')">🔵 Nord</button>
+                <button class="btn-south" onclick="movePlayerToTeam('${p.id}', 'south')">🔴 Sud</button>
+              </div>
+            </li>`).join('')
+        : '<li class="waiting-info">Tous les joueurs sont assignés</li>';
     }
 
-    function selectTeamPlayers(team) {
-      const otherTeam = team === 'north' ? 'south' : 'north';
-      const availablePlayers = gameState.players.filter(p => p.team === null);
+    function movePlayerToTeam(playerId, targetTeam) {
+      // Build new team assignment based on current state + this change
+      const north = gameState.players
+        .filter(p => (p.team === 'north' && p.id !== playerId) || (targetTeam === 'north' && p.id === playerId))
+        .map(p => p.id);
+      const south = gameState.players
+        .filter(p => (p.team === 'south' && p.id !== playerId) || (targetTeam === 'south' && p.id === playerId))
+        .map(p => p.id);
 
-      if (availablePlayers.length === 0) {
-        alert('No unassigned players left');
-        return;
-      }
-
-      // Simple assignment: take first available
-      const player = availablePlayers[0];
-      selectedTeamPlayers[team].push(player.id);
-
-      // Update display
-      socket.emit('assign_teams', { teams: {
-        north: gameState.players.filter(p => selectedTeamPlayers.north.includes(p.id) || p.team === 'north').map(p => p.id),
-        south: gameState.players.filter(p => selectedTeamPlayers.south.includes(p.id) || p.team === 'south').map(p => p.id)
-      }});
+      socket.emit('assign_teams_setup', { teams: { north, south } });
     }
 
     function startGame() {
-      if (gameState.teams.north.length === 0 || gameState.teams.south.length === 0) {
-        alert('Both teams need at least 1 player');
+      const northPlayers = gameState.players.filter(p => p.team === 'north');
+      const southPlayers = gameState.players.filter(p => p.team === 'south');
+
+      if (northPlayers.length === 0 || southPlayers.length === 0) {
+        alert('Les deux équipes doivent avoir au moins 1 joueur');
         return;
       }
 
-      const teamConfig = {
-        north: gameState.players.filter(p => gameState.teams.north.includes(p.username)).map(p => p.id),
-        south: gameState.players.filter(p => gameState.teams.south.includes(p.username)).map(p => p.id)
-      };
-
-      socket.emit('assign_teams', { teams: teamConfig });
+      socket.emit('start_game', {});
     }
 
     function resetTeams() {
-      selectedTeamPlayers = { north: [], south: [] };
-      updateTeamLists();
+      socket.emit('assign_teams_setup', { teams: { north: [], south: [] } });
     }
 
     function disconnectGame() {
       socket.disconnect();
-      showScreen('lobbyScreen');
+      location.reload();
     }
 
     function selectSmugglerOrInspector(playerId, role) {
@@ -744,8 +857,8 @@
 
     function enterCustoms() {
       const amount = parseInt(document.getElementById('smuggleAmount').value) || 0;
-      if (amount < 0 || amount > 100000000) {
-        alert('Invalid amount');
+      if (amount < 0 || amount > 100_000_000) {
+        alert('Montant invalide (0 à 100 000 000)');
         return;
       }
       socket.emit('enter_customs', { amount });
@@ -772,22 +885,26 @@
     function nextRound() {
       document.getElementById('resultDisplay').style.display = 'none';
       document.getElementById('roleSelection').style.display = 'block';
+      currentRole = null;
     }
 
     function returnToLobby() {
       socket.disconnect();
-      showScreen('lobbyScreen');
+      location.reload();
     }
 
-    // Socket listeners
+    // ---- Listeners Socket ----
+
     socket.on('room_created', (data) => {
       currentRoom = data.roomId;
       currentPlayer = socket.id;
       gameState = data.gameState;
 
-      document.getElementById('roomIdDisplay').innerHTML = `<strong>Room ID:</strong> <span style="color: #fff; font-size: 1.4em;">${currentRoom}</span>`;
+      document.getElementById('roomCodeDisplay').textContent = currentRoom.toUpperCase();
       showScreen('gameScreen');
       document.getElementById('setupPhase').style.display = 'block';
+      document.getElementById('activePhase').style.display = 'none';
+      document.getElementById('endPhase').style.display = 'none';
       updateGameDisplay();
     });
 
@@ -795,29 +912,46 @@
       gameState = data;
       updateGameDisplay();
 
+      if (data.gameState === 'lobby') {
+        // Still in setup
+        document.getElementById('setupPhase').style.display = 'block';
+        document.getElementById('activePhase').style.display = 'none';
+        document.getElementById('endPhase').style.display = 'none';
+        updateSetupTeamLists();
+      }
+
       if (data.gameState === 'active') {
         document.getElementById('setupPhase').style.display = 'none';
         document.getElementById('activePhase').style.display = 'block';
+        document.getElementById('resultDisplay').style.display = 'none';
+        document.getElementById('customsRoom').style.display = 'none';
         document.getElementById('roleSelection').style.display = 'block';
 
-        // Show role selection UI
         const smugglerTeam = data.currentSmugglerTeam;
         const inspectorTeam = smugglerTeam === 'north' ? 'south' : 'north';
+
+        // Update role panel titles dynamically
+        document.getElementById('smugglerPanelTitle').textContent =
+          `${smugglerTeam === 'north' ? '🔵' : '🔴'} Choisir le Contrebandier (${getTeamLabel(smugglerTeam)})`;
+        document.getElementById('inspectorPanelTitle').textContent =
+          `${inspectorTeam === 'north' ? '🔵' : '🔴'} Choisir l'Inspecteur des Douanes (${getTeamLabel(inspectorTeam)})`;
 
         const smugglerList = document.getElementById('smugglerList');
         const inspectorList = document.getElementById('inspectorList');
 
         smugglerList.innerHTML = data.players.filter(p => p.team === smugglerTeam).map(p => `
-          <li class="player-item" onclick="selectSmugglerOrInspector('${p.id}', 'smuggler')">
+          <li class="player-item ${data.currentSmuggler === p.username ? 'selected' : ''}"
+              onclick="selectSmugglerOrInspector('${p.id}', 'smuggler')">
             <strong>${p.username}</strong>
-            <span class="player-stats">${formatMoney(p.atm)} ATM</span>
+            <span class="player-stats">${formatMoney(p.atm)} Guichet</span>
           </li>
         `).join('');
 
         inspectorList.innerHTML = data.players.filter(p => p.team === inspectorTeam).map(p => `
-          <li class="player-item" onclick="selectSmugglerOrInspector('${p.id}', 'customs_inspector')">
+          <li class="player-item ${data.customsInspector === p.username ? 'selected' : ''}"
+              onclick="selectSmugglerOrInspector('${p.id}', 'customs_inspector')">
             <strong>${p.username}</strong>
-            <span class="player-stats">${formatMoney(p.atm)} ATM</span>
+            <span class="player-stats">${formatMoney(p.atm)} Guichet</span>
           </li>
         `).join('');
       }
@@ -827,31 +961,55 @@
         document.getElementById('endPhase').style.display = 'block';
 
         const finalStats = document.getElementById('finalStats');
-        finalStats.innerHTML = data.players.map(p => `
+        const sorted = [...data.players].sort((a, b) => b.totalEarned - a.totalEarned);
+        finalStats.innerHTML = sorted.map((p, i) => `
           <div class="stat-card">
             <div style="margin-bottom: 10px;">
-              <strong>${p.username}</strong>
+              <strong>${i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : ''}${p.username}</strong>
+              <div class="team-indicator team-${p.team}" style="display:inline-block;margin-left:8px;padding:3px 10px;font-size:0.75em;">${getTeamLabel(p.team)}</div>
             </div>
-            <div class="stat-label">Final Earnings</div>
+            <div class="stat-label">Gains Finaux</div>
             <div class="stat-value">${formatMoney(p.totalEarned)}</div>
           </div>
         `).join('');
       }
     });
 
+    socket.on('joined_room', (data) => {
+      currentRoom = data.roomId;
+      currentPlayer = socket.id;
+      gameState = data.gameState;
+
+      document.getElementById('roomCodeDisplay').textContent = currentRoom.toUpperCase();
+      showScreen('gameScreen');
+      document.getElementById('setupPhase').style.display = 'block';
+      document.getElementById('activePhase').style.display = 'none';
+      document.getElementById('endPhase').style.display = 'none';
+      updateGameDisplay();
+    });
+
     socket.on('customs_session_started', (data) => {
       document.getElementById('roleSelection').style.display = 'none';
       document.getElementById('customsRoom').style.display = 'block';
 
-      // Show appropriate view
-      if (data.smuggler === gameState.players.find(p => p.id === socket.id)?.username) {
+      const myUsername = gameState.players.find(p => p.id === socket.id)?.username;
+
+      if (data.smuggler === myUsername) {
         document.getElementById('smugglerView').style.display = 'block';
         document.getElementById('inspectorView').style.display = 'none';
+        document.getElementById('spectatorCustomsView').style.display = 'none';
         currentRole = 'smuggler';
-      } else {
+      } else if (data.inspector === myUsername) {
         document.getElementById('smugglerView').style.display = 'none';
         document.getElementById('inspectorView').style.display = 'block';
+        document.getElementById('doubtOptions').style.display = 'none';
+        document.getElementById('spectatorCustomsView').style.display = 'none';
         currentRole = 'inspector';
+      } else {
+        document.getElementById('smugglerView').style.display = 'none';
+        document.getElementById('inspectorView').style.display = 'none';
+        document.getElementById('spectatorCustomsView').style.display = 'block';
+        currentRole = 'spectator';
       }
     });
 
@@ -867,44 +1025,44 @@
 
       switch (data.outcome) {
         case 'pass':
-          title = '✅ PASS - Money Transferred';
+          title = '✅ LAISSÉ PASSER — Argent Transféré';
           details = `
-            <div class="result-item"><div class="result-label">Amount</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
-            <div class="result-item"><div class="result-label">Status</div><div class="result-value">Success</div></div>
-            <div class="result-item"><div class="result-label">Smuggler Wins</div></div>
+            <div class="result-item"><div class="result-label">Montant</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
+            <div class="result-item"><div class="result-label">Statut</div><div class="result-value">Succès</div></div>
+            <div class="result-item"><div class="result-label">Le Contrebandier Gagne</div></div>
           `;
           break;
         case 'pass_empty':
-          title = '✅ PASS - Empty Case';
-          details = `<div class="result-item"><div class="result-label">Inspector Waved Through Empty Case</div></div>`;
+          title = '✅ LAISSÉ PASSER — Valise Vide';
+          details = `<div class="result-item"><div class="result-label">L'Inspecteur a laissé passer une valise vide</div></div>`;
           break;
         case 'doubt_wins':
-          title = '🚨 DOUBT - Inspector Wins';
+          title = '🚨 DOUTE — L\'Inspecteur Gagne';
           details = `
-            <div class="result-item"><div class="result-label">Amount Seized</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
-            <div class="result-item"><div class="result-label">Suspected</div><div class="result-value">${formatMoney(data.doubt)}</div></div>
+            <div class="result-item"><div class="result-label">Montant Saisi</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
+            <div class="result-item"><div class="result-label">Montant Suspecté</div><div class="result-value">${formatMoney(data.doubt)}</div></div>
           `;
           break;
         case 'indemnity':
-          title = '🎁 INDEMNITY - Smuggler Wins';
+          title = '🎁 INDEMNITÉ — Le Contrebandier Gagne';
           details = `
-            <div class="result-item"><div class="result-label">False Accusation</div></div>
-            <div class="result-item"><div class="result-label">Indemnity Received</div><div class="result-value">${formatMoney(data.indemnity)}</div></div>
+            <div class="result-item"><div class="result-label">Fausse Accusation</div></div>
+            <div class="result-item"><div class="result-label">Indemnité Reçue</div><div class="result-value">${formatMoney(data.indemnity)}</div></div>
           `;
           break;
         case 'smuggler_wins':
-          title = '🎉 SMUGGLER WINS';
+          title = '🎉 LE CONTREBANDIER GAGNE';
           details = `
-            <div class="result-item"><div class="result-label">Amount Smuggled</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
-            <div class="result-item"><div class="result-label">Indemnity</div><div class="result-value">${formatMoney(data.indemnity)}</div></div>
-            <div class="result-item"><div class="result-label">Total Gained</div><div class="result-value">${formatMoney(data.moneyTransferred + data.indemnity)}</div></div>
+            <div class="result-item"><div class="result-label">Montant Passé</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
+            <div class="result-item"><div class="result-label">Indemnité</div><div class="result-value">${formatMoney(data.indemnity)}</div></div>
+            <div class="result-item"><div class="result-label">Total Gagné</div><div class="result-value">${formatMoney(data.moneyTransferred + data.indemnity)}</div></div>
           `;
           break;
         case 'exact_doubt':
-          title = '🎯 EXACT DOUBT - Inspector Wins';
+          title = '🎯 DOUTE EXACT — L\'Inspecteur Gagne';
           details = `
-            <div class="result-item"><div class="result-label">Amount</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
-            <div class="result-item"><div class="result-label">Perfect Guess!</div></div>
+            <div class="result-item"><div class="result-label">Montant</div><div class="result-value">${formatMoney(data.moneyTransferred)}</div></div>
+            <div class="result-item"><div class="result-label">Parfaitement Deviné !</div></div>
           `;
           break;
       }
@@ -917,11 +1075,12 @@
       showError(msg);
     });
 
-    // Doubt slider display
+    // Mise à jour de l'affichage du slider de doute
     document.addEventListener('input', (e) => {
       if (e.target.id === 'doubtAmount') {
         const amount = parseInt(e.target.value);
-        document.getElementById('doubtDisplay').textContent = formatMoney(amount);
+        document.getElementById('doubtDisplay').textContent =
+          new Intl.NumberFormat('fr-FR').format(amount);
       }
     });
   </script>
