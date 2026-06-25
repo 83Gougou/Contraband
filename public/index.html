@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日本語 Jeux</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+      --primary: #16a34a;
+      --dark: #000000;
+      --light: #ffffff;
+      --gray: #f3f4f6;
+      --gray-dark: #1f2937;
+      --text: #111827;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--light);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--dark);
+      color: var(--light);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .nav-btn {
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--light);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .nav-btn:hover {
+      background: var(--primary);
+    }
+
+    .nav-btn.active {
+      background: var(--primary);
+    }
+
+    .sort-btn {
+      padding: 10px 20px;
+      border: 2px solid #e5e7eb;
+      background: var(--light);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .sort-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .sort-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .user-profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: transparent;
+      border: none;
+      color: var(--light);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .user-profile-btn:hover {
+      opacity: 0.8;
+    }
+
+    .avatar-small {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* LEADERBOARD PAGE */
+    .leaderboard-table {
+      background: var(--light);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .leaderboard-header {
+      background: var(--dark);
+      color: var(--light);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 50px 1fr 120px 120px 120px;
+      gap: 20px;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .leaderboard-row {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 50px 1fr 120px 120px 120px;
+      gap: 20px;
+      border-bottom: 1px solid #e5e7eb;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .leaderboard-row:hover {
+      background: var(--gray);
+    }
+
+    .rank {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--primary);
+    }
+
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .avatar-medium {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--light);
+    }
+
+    .player-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .stat-cell {
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* MINI GAMES PAGE */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      max-width: 700px;
+    }
+
+    .game-card {
+      background: var(--light);
+      border: 2px solid var(--dark);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .game-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 8px 16px rgba(22, 163, 74, 0.15);
+    }
+
+    .game-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+
+    .game-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .game-desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .btn-start {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: var(--light);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-start:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    /* GAME PLAY PAGE */
+    .game-play {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 50px;
+    }
+
+    .game-header {
+      display: flex;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .streak-box {
+      text-align: center;
+    }
+
+    .streak-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .streak-display {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 48px;
+      font-weight: 700;
+    }
+
+    .plant {
+      font-size: 56px;
+      animation: plantGrow 0.5s ease;
+    }
+
+    @keyframes plantGrow {
+      0% { transform: scale(0.8); }
+      100% { transform: scale(1); }
+    }
+
+    .multiplier {
+      color: var(--primary);
+      font-size: 32px;
+    }
+
+    .timer-box {
+      text-align: center;
+    }
+
+    .timer-bar-container {
+      width: 280px;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .timer-bar {
+      height: 100%;
+      background: var(--primary);
+      animation: timerFill 5s linear forwards;
+      opacity: 0;
+      animation: timerBar 5s linear forwards;
+    }
+
+    @keyframes timerBar {
+      0% { 
+        width: 100%;
+        opacity: 1;
+      }
+      100% { 
+        width: 0%;
+        opacity: 0;
+      }
+    }
+
+    .character-display {
+      font-size: 120px;
+      font-weight: 700;
+      line-height: 1;
+      min-height: 140px;
+    }
+
+    .answers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .answer-choice {
+      padding: 18px;
+      background: var(--gray);
+      border: 2px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .answer-choice:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: var(--light);
+    }
+
+    .answer-choice:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    /* GAME OVER PAGE */
+    .game-over-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 40px;
+    }
+
+    .game-over-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .game-over-stats {
+      background: var(--gray);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      min-width: 300px;
+    }
+
+    .stat-row {
+      margin-bottom: 20px;
+    }
+
+    .stat-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .game-over-buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .btn-game {
+      padding: 14px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-restart {
+      background: var(--primary);
+      color: var(--light);
+    }
+
+    .btn-restart:hover {
+      opacity: 0.9;
+    }
+
+    .btn-quit {
+      background: var(--gray-dark);
+      color: var(--light);
+    }
+
+    .btn-quit:hover {
+      opacity: 0.8;
+    }
+
+    /* PROFILE MODAL */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    .profile-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .avatar-large {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      color: var(--light);
+      font-weight: 700;
+      margin: 0 auto 20px;
+    }
+
+    .profile-name {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .stat-box {
+      background: var(--gray);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-box-label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .stat-box-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* SETTINGS MODAL */
+    .settings-modal .modal-content {
+      max-width: 450px;
+    }
+
+    .settings-group {
+      margin-bottom: 25px;
+    }
+
+    .settings-label {
+      font-size: 13px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      font-weight: 600;
+      display: block;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .color-option {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .color-option.selected {
+      border-color: var(--dark);
+      transform: scale(1.1);
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: var(--light);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      margin-top: 20px;
+    }
+
+    .btn-save:hover {
+      opacity: 0.9;
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 20px;
+      }
+
+      .header-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .main {
+        padding: 20px;
+      }
+
+      .game-header {
+        gap: 30px;
+      }
+
+      .character-display {
+        font-size: 80px;
+      }
+
+      .answers-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .leaderboard-header,
+      .leaderboard-row {
+        grid-template-columns: 40px 1fr 80px 80px 80px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">日本語</div>
+        <div class="nav-buttons">
+          <button class="nav-btn active" data-page="leaderboard">📊 Leaderboard</button>
+          <button class="nav-btn" data-page="games">🎮 Mini-jeux</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="user-profile-btn" id="userBtn">
+          <div class="avatar-small" id="userAvatar">A</div>
+          <span id="userName">Joueur</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <!-- LEADERBOARD PAGE -->
+      <div id="leaderboard" class="page active">
+        <h1 style="margin-bottom: 30px; font-size: 28px; font-weight: 700;">Classement</h1>
+        
+        <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+          <button class="sort-btn active" data-sort="exp" onclick="changeSortLeaderboard('exp')">💰 EXP</button>
+          <button class="sort-btn" data-sort="hiragana" onclick="changeSortLeaderboard('hiragana')">あ Hiragana</button>
+          <button class="sort-btn" data-sort="katakana" onclick="changeSortLeaderboard('katakana')">ア Katakana</button>
+          <button class="sort-btn" data-sort="all" onclick="changeSortLeaderboard('all')">🌟 Tout</button>
+          <button class="sort-btn" onclick="showMyProfile()" style="margin-left: auto;">👤 Mon Profile</button>
+        </div>
+
+        <div class="leaderboard-table">
+          <div class="leaderboard-header" id="leaderboardHeader">
+            <div>#</div>
+            <div>Joueur</div>
+            <div id="col1" style="display: none;">Hiragana</div>
+            <div id="col2" style="display: none;">Katakana</div>
+            <div id="col3">EXP Total</div>
+          </div>
+          <div id="leaderboardList"></div>
+        </div>
+      </div>
+
+      <!-- GAMES PAGE -->
+      <div id="games" class="page">
+        <h1 style="margin-bottom: 40px; font-size: 28px; font-weight: 700;">Choisir un jeu</h1>
+        <div class="games-grid">
+          <div class="game-card">
+            <div class="game-icon">あ</div>
+            <div class="game-title">Hiragana</div>
+            <div class="game-desc">Apprends les hiragana avec ce mini-jeu rapide</div>
+            <button class="btn-start" onclick="startGame('hiragana')">Commencer</button>
+          </div>
+          <div class="game-card">
+            <div class="game-icon">ア</div>
+            <div class="game-title">Katakana</div>
+            <div class="game-desc">Apprends les katakana avec ce mini-jeu rapide</div>
+            <button class="btn-start" onclick="startGame('katakana')">Commencer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAMEPLAY PAGE -->
+      <div id="gameplay" class="page">
+        <div class="game-play">
+          <div class="game-header">
+            <div class="streak-box">
+              <div class="streak-label">Streak</div>
+              <div class="streak-display">
+                <span id="streakCount">0</span>
+                <span class="plant" id="plantEmoji">🌱</span>
+              </div>
+            </div>
+            <div class="timer-box">
+              <div class="streak-label">Temps</div>
+              <div class="timer-bar-container">
+                <div class="timer-bar" id="timerBar"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="character-display" id="gameCharacter">あ</div>
+
+          <div class="answers-grid" id="gameAnswers"></div>
+        </div>
+      </div>
+
+      <!-- GAME OVER PAGE -->
+      <div id="gameover" class="page">
+        <div class="game-over-screen">
+          <div class="game-over-title">Partie Terminée!</div>
+          <div class="game-over-stats">
+            <div class="stat-row">
+              <div class="stat-label">Streak Final</div>
+              <div class="stat-value" id="finalStreak">0</div>
+            </div>
+            <div class="stat-row">
+              <div class="stat-label">EXP Gagné</div>
+              <div class="stat-value" id="finalExp">0</div>
+            </div>
+          </div>
+          <div class="game-over-buttons">
+            <button class="btn-game btn-restart" onclick="restartGame()">Recommencer</button>
+            <button class="btn-game btn-quit" onclick="quitGame()">Quitter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal" id="profileModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+      <div class="profile-header">
+        <div class="avatar-large" id="modalAvatar">A</div>
+        <div class="profile-name" id="modalName">Joueur</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-box-label">Hiragana</div>
+          <div class="stat-box-value" id="modalHira">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Katakana</div>
+          <div class="stat-box-value" id="modalKata">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">EXP Total</div>
+          <div class="stat-box-value" id="modalExp">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">Parties</div>
+          <div class="stat-box-value" id="modalGames">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal settings-modal" id="settingsModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+      <h2 style="margin-bottom: 30px; font-size: 22px; font-weight: 700;">Paramètres</h2>
+      
+      <div class="settings-group">
+        <label class="settings-label">Pseudo</label>
+        <input type="text" class="input-field" id="pseudoInput" placeholder="Ton pseudo">
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Couleur de profile</label>
+        <div class="color-picker">
+          <div class="color-option selected" style="background: #3b82f6;" data-color="#3b82f6"></div>
+          <div class="color-option" style="background: #ef4444;" data-color="#ef4444"></div>
+          <div class="color-option" style="background: #8b5cf6;" data-color="#8b5cf6"></div>
+          <div class="color-option" style="background: #f59e0b;" data-color="#f59e0b"></div>
+          <div class="color-option" style="background: #16a34a;" data-color="#16a34a"></div>
+          <div class="color-option" style="background: #ec4899;" data-color="#ec4899"></div>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveSettings()">Sauvegarder</button>
+    </div>
+  </div>
+
+  <script>
+    // DATA
+    const hiraganaData = [
+      { char: 'あ', romaji: 'a' }, { char: 'い', romaji: 'i' }, { char: 'う', romaji: 'u' }, { char: 'え', romaji: 'e' }, { char: 'お', romaji: 'o' },
+      { char: 'か', romaji: 'ka' }, { char: 'き', romaji: 'ki' }, { char: 'く', romaji: 'ku' }, { char: 'け', romaji: 'ke' }, { char: 'こ', romaji: 'ko' },
+      { char: 'が', romaji: 'ga' }, { char: 'ぎ', romaji: 'gi' }, { char: 'ぐ', romaji: 'gu' }, { char: 'げ', romaji: 'ge' }, { char: 'ご', romaji: 'go' },
+      { char: 'さ', romaji: 'sa' }, { char: 'し', romaji: 'si' }, { char: 'す', romaji: 'su' }, { char: 'せ', romaji: 'se' }, { char: 'そ', romaji: 'so' },
+      { char: 'ざ', romaji: 'za' }, { char: 'じ', romaji: 'zi' }, { char: 'ず', romaji: 'zu' }, { char: 'ぜ', romaji: 'ze' }, { char: 'ぞ', romaji: 'zo' },
+      { char: 'た', romaji: 'ta' }, { char: 'ち', romaji: 'ti' }, { char: 'つ', romaji: 'tu' }, { char: 'て', romaji: 'te' }, { char: 'と', romaji: 'to' },
+      { char: 'だ', romaji: 'da' }, { char: 'ぢ', romaji: 'di' }, { char: 'づ', romaji: 'du' }, { char: 'で', romaji: 'de' }, { char: 'ど', romaji: 'do' },
+      { char: 'な', romaji: 'na' }, { char: 'に', romaji: 'ni' }, { char: 'ぬ', romaji: 'nu' }, { char: 'ね', romaji: 'ne' }, { char: 'の', romaji: 'no' },
+      { char: 'は', romaji: 'ha' }, { char: 'ひ', romaji: 'hi' }, { char: 'ふ', romaji: 'hu' }, { char: 'へ', romaji: 'he' }, { char: 'ほ', romaji: 'ho' },
+      { char: 'ば', romaji: 'ba' }, { char: 'び', romaji: 'bi' }, { char: 'ぶ', romaji: 'bu' }, { char: 'べ', romaji: 'be' }, { char: 'ぼ', romaji: 'bo' },
+      { char: 'ぱ', romaji: 'pa' }, { char: 'ぴ', romaji: 'pi' }, { char: 'ぷ', romaji: 'pu' }, { char: 'ぺ', romaji: 'pe' }, { char: 'ぽ', romaji: 'po' },
+      { char: 'ま', romaji: 'ma' }, { char: 'み', romaji: 'mi' }, { char: 'む', romaji: 'mu' }, { char: 'め', romaji: 'me' }, { char: 'も', romaji: 'mo' },
+      { char: 'や', romaji: 'ya' }, { char: 'ゆ', romaji: 'yu' }, { char: 'よ', romaji: 'yo' },
+      { char: 'ら', romaji: 'ra' }, { char: 'り', romaji: 'ri' }, { char: 'る', romaji: 'ru' }, { char: 'れ', romaji: 're' }, { char: 'ろ', romaji: 'ro' },
+      { char: 'わ', romaji: 'wa' }, { char: 'を', romaji: 'wo' }, { char: 'ん', romaji: 'n' }
+    ];
+
+    const katakanaData = [
+      { char: 'ア', romaji: 'a' }, { char: 'イ', romaji: 'i' }, { char: 'ウ', romaji: 'u' }, { char: 'エ', romaji: 'e' }, { char: 'オ', romaji: 'o' },
+      { char: 'カ', romaji: 'ka' }, { char: 'キ', romaji: 'ki' }, { char: 'ク', romaji: 'ku' }, { char: 'ケ', romaji: 'ke' }, { char: 'コ', romaji: 'ko' },
+      { char: 'ガ', romaji: 'ga' }, { char: 'ギ', romaji: 'gi' }, { char: 'グ', romaji: 'gu' }, { char: 'ゲ', romaji: 'ge' }, { char: 'ゴ', romaji: 'go' },
+      { char: 'サ', romaji: 'sa' }, { char: 'シ', romaji: 'si' }, { char: 'ス', romaji: 'su' }, { char: 'セ', romaji: 'se' }, { char: 'ソ', romaji: 'so' },
+      { char: 'ザ', romaji: 'za' }, { char: 'ジ', romaji: 'zi' }, { char: 'ズ', romaji: 'zu' }, { char: 'ゼ', romaji: 'ze' }, { char: 'ゾ', romaji: 'zo' },
+      { char: 'タ', romaji: 'ta' }, { char: 'チ', romaji: 'ti' }, { char: 'ツ', romaji: 'tu' }, { char: 'テ', romaji: 'te' }, { char: 'ト', romaji: 'to' },
+      { char: 'ダ', romaji: 'da' }, { char: 'ヂ', romaji: 'di' }, { char: 'ヅ', romaji: 'du' }, { char: 'デ', romaji: 'de' }, { char: 'ド', romaji: 'do' },
+      { char: 'ナ', romaji: 'na' }, { char: 'ニ', romaji: 'ni' }, { char: 'ヌ', romaji: 'nu' }, { char: 'ネ', romaji: 'ne' }, { char: 'ノ', romaji: 'no' },
+      { char: 'ハ', romaji: 'ha' }, { char: 'ヒ', romaji: 'hi' }, { char: 'フ', romaji: 'hu' }, { char: 'ヘ', romaji: 'he' }, { char: 'ホ', romaji: 'ho' },
+      { char: 'バ', romaji: 'ba' }, { char: 'ビ', romaji: 'bi' }, { char: 'ブ', romaji: 'bu' }, { char: 'ベ', romaji: 'be' }, { char: 'ボ', romaji: 'bo' },
+      { char: 'パ', romaji: 'pa' }, { char: 'ピ', romaji: 'pi' }, { char: 'プ', romaji: 'pu' }, { char: 'ペ', romaji: 'pe' }, { char: 'ポ', romaji: 'po' },
+      { char: 'マ', romaji: 'ma' }, { char: 'ミ', romaji: 'mi' }, { char: 'ム', romaji: 'mu' }, { char: 'メ', romaji: 'me' }, { char: 'モ', romaji: 'mo' },
+      { char: 'ヤ', romaji: 'ya' }, { char: 'ユ', romaji: 'yu' }, { char: 'ヨ', romaji: 'yo' },
+      { char: 'ラ', romaji: 'ra' }, { char: 'リ', romaji: 'ri' }, { char: 'ル', romaji: 'ru' }, { char: 'レ', romaji: 're' }, { char: 'ロ', romaji: 'ro' },
+      { char: 'ワ', romaji: 'wa' }, { char: 'ヲ', romaji: 'wo' }, { char: 'ン', romaji: 'n' }
+    ];
+
+    const plantEmojis = ['🌱', '🌿', '🍀', '🌾', '🌳'];
+
+    // STATE
+    let state = {
+      userId: null,
+      username: 'Joueur',
+      avatarColor: '#3b82f6',
+      maxStreakHira: 0,
+      maxStreakKata: 0,
+      totalExp: 0,
+      totalGames: 0,
+      currentGameMode: null,
+      currentStreak: 0,
+      currentExp: 0,
+      currentChar: null,
+      correctAnswer: null,
+      timerRunning: false,
+      timerTimeout: null
+    };
+
+    const socket = io();
+
+    // INIT
+    async function init() {
+      const savedUserId = localStorage.getItem('userId');
+      const res = await fetch('/api/user/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: savedUserId })
+      });
+      const data = await res.json();
+      state.userId = data.userId;
+      localStorage.setItem('userId', state.userId);
+      Object.assign(state, data.user);
+      
+      updateUI();
+      loadLeaderboard();
+      setupEventListeners();
+      socket.emit('user_connect', state.userId);
+    }
+
+    function updateUI() {
+      document.getElementById('userName').textContent = state.username;
+      document.getElementById('userAvatar').style.background = state.avatarColor;
+      document.getElementById('userAvatar').textContent = state.username[0];
+      document.getElementById('pseudoInput').value = state.username;
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.color === state.avatarColor);
+      });
+    }
+
+    let currentLeaderboardSort = 'exp';
+
+    async function loadLeaderboard(sortBy = 'exp') {
+      currentLeaderboardSort = sortBy;
+      const res = await fetch('/api/leaderboard');
+      let leaderboard = await res.json();
+
+      // Calculer le score global
+      leaderboard.forEach(player => {
+        player.overallScore = player.maxStreakHira + player.maxStreakKata + Math.floor(player.totalExp / 10);
+      });
+
+      // Configurer l'affichage des colonnes
+      const col1 = document.getElementById('col1');
+      const col2 = document.getElementById('col2');
+      const col3 = document.getElementById('col3');
+
+      if (sortBy === 'hiragana') {
+        leaderboard.sort((a, b) => b.maxStreakHira - a.maxStreakHira);
+        col1.style.display = 'none';
+        col2.style.display = 'none';
+        col3.style.display = 'block';
+        col3.textContent = 'Hiragana';
+      } else if (sortBy === 'katakana') {
+        leaderboard.sort((a, b) => b.maxStreakKata - a.maxStreakKata);
+        col1.style.display = 'none';
+        col2.style.display = 'none';
+        col3.style.display = 'block';
+        col3.textContent = 'Katakana';
+      } else if (sortBy === 'all') {
+        leaderboard.sort((a, b) => b.overallScore - a.overallScore);
+        col1.style.display = 'block';
+        col2.style.display = 'block';
+        col3.style.display = 'block';
+        col1.textContent = 'Hiragana';
+        col2.textContent = 'Katakana';
+        col3.textContent = 'Score Overall';
+      } else {
+        leaderboard.sort((a, b) => b.totalExp - a.totalExp);
+        col1.style.display = 'none';
+        col2.style.display = 'none';
+        col3.style.display = 'block';
+        col3.textContent = 'EXP Total';
+      }
+
+      const list = document.getElementById('leaderboardList');
+      list.innerHTML = leaderboard.map((player, idx) => {
+        let stat1, stat2, stat3;
+        
+        if (sortBy === 'hiragana') {
+          stat3 = player.maxStreakHira;
+        } else if (sortBy === 'katakana') {
+          stat3 = player.maxStreakKata;
+        } else if (sortBy === 'all') {
+          stat1 = player.maxStreakHira;
+          stat2 = player.maxStreakKata;
+          stat3 = player.overallScore;
+        } else {
+          stat3 = player.totalExp;
+        }
+
+        return `
+          <div class="leaderboard-row" onclick="showProfile('${player.id}')">
+            <div class="rank">${idx + 1}</div>
+            <div class="player-info">
+              <div class="avatar-medium" style="background: ${player.avatarColor}">${player.username[0]}</div>
+              <div class="player-name">${player.username}</div>
+            </div>
+            ${sortBy === 'all' ? `<div class="stat-cell">${stat1}</div>` : ''}
+            ${sortBy === 'all' ? `<div class="stat-cell">${stat2}</div>` : ''}
+            <div class="stat-cell">${stat3}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function changeSortLeaderboard(sortBy) {
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`[data-sort="${sortBy}"]`).classList.add('active');
+      loadLeaderboard(sortBy);
+    }
+
+    function showMyProfile() {
+      showProfile(state.userId);
+    }
+
+    async function showProfile(userId) {
+      const res = await fetch(`/api/user/${userId}`);
+      const user = await res.json();
+      document.getElementById('modalAvatar').style.background = user.avatarColor;
+      document.getElementById('modalAvatar').textContent = user.username[0];
+      document.getElementById('modalName').textContent = user.username;
+      document.getElementById('modalHira').textContent = user.maxStreakHira;
+      document.getElementById('modalKata').textContent = user.maxStreakKata;
+      document.getElementById('modalExp').textContent = user.totalExp;
+      document.getElementById('modalGames').textContent = user.totalGames;
+      openModal('profileModal');
+    }
+
+    function setupEventListeners() {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Bloquer la nav pendant le jeu
+          if (state.timerRunning) {
+            alert('Tu dois finir la partie d\'abord!');
+            return;
+          }
+          document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          switchPage(btn.dataset.page);
+        });
+      });
+
+      document.getElementById('userBtn').addEventListener('click', () => openModal('settingsModal'));
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          state.avatarColor = opt.dataset.color;
+        });
+      });
+    }
+
+    function switchPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(page).classList.add('active');
+      if (page === 'leaderboard') loadLeaderboard();
+    }
+
+    function startGame(mode) {
+      state.currentGameMode = mode;
+      state.currentStreak = 0;
+      state.currentExp = 0;
+      switchPage('gameplay');
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      if (state.timerRunning) return;
+      
+      const data = state.currentGameMode === 'hiragana' ? hiraganaData : katakanaData;
+      const item = data[Math.floor(Math.random() * data.length)];
+      state.currentChar = item.char;
+      state.correctAnswer = item.romaji;
+
+      document.getElementById('gameCharacter').textContent = state.currentChar;
+      
+      const wrong = data.filter(x => x.romaji !== state.correctAnswer)
+        .sort(() => Math.random() - 0.5).slice(0, 2).map(x => x.romaji);
+      const answers = [state.correctAnswer, ...wrong].sort(() => Math.random() - 0.5);
+
+      const grid = document.getElementById('gameAnswers');
+      grid.innerHTML = answers.map(ans => 
+        `<button class="answer-choice" onclick="answer('${ans}')">${ans}</button>`
+      ).join('');
+
+      updatePlant();
+      startTimer();
+    }
+
+    function answer(ans) {
+      if (!state.timerRunning) return;
+      state.timerRunning = false;
+      
+      if (ans === state.correctAnswer) {
+        state.currentStreak++;
+        state.currentExp += 10;
+        document.querySelectorAll('.answer-choice').forEach(btn => btn.disabled = true);
+        setTimeout(() => nextQuestion(), 100);
+      } else {
+        endGame();
+      }
+    }
+
+    function startTimer() {
+      // Clear le timer précédent s'il existe
+      if (state.timerTimeout) {
+        clearTimeout(state.timerTimeout);
+      }
+      
+      state.timerRunning = true;
+      document.getElementById('timerBar').style.animation = 'none';
+      setTimeout(() => {
+        document.getElementById('timerBar').style.animation = 'timerBar 5s linear forwards';
+      }, 10);
+      
+      // Sauvegarder la référence du timeout
+      state.timerTimeout = setTimeout(() => {
+        if (state.timerRunning) {
+          state.timerRunning = false;
+          endGame();
+        }
+      }, 5000);
+    }
+
+    function updatePlant() {
+      const level = Math.min(Math.floor(state.currentStreak / 5), 4);
+      document.getElementById('plantEmoji').textContent = plantEmojis[level];
+      document.getElementById('streakCount').textContent = state.currentStreak;
+    }
+
+    function endGame() {
+      state.timerRunning = false;
+      const isHira = state.currentGameMode === 'hiragana';
+      if (isHira) {
+        state.maxStreakHira = Math.max(state.maxStreakHira, state.currentStreak);
+      } else {
+        state.maxStreakKata = Math.max(state.maxStreakKata, state.currentStreak);
+      }
+      state.totalExp += state.currentExp;
+      state.totalGames++;
+      
+      saveStats();
+      
+      document.getElementById('finalStreak').textContent = state.currentStreak;
+      document.getElementById('finalExp').textContent = state.currentExp;
+      switchPage('gameover');
+    }
+
+    function restartGame() {
+      startGame(state.currentGameMode);
+    }
+
+    function quitGame() {
+      switchPage('games');
+    }
+
+    async function saveStats() {
+      await fetch(`/api/user/${state.userId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maxStreakHira: state.maxStreakHira,
+          maxStreakKata: state.maxStreakKata,
+          totalExp: state.totalExp,
+          totalGames: state.totalGames
+        })
+      });
+      loadLeaderboard();
+    }
+
+    async function saveSettings() {
+      state.username = document.getElementById('pseudoInput').value;
+      await fetch(`/api/user/${state.userId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: state.username,
+          avatarColor: state.avatarColor
+        })
+      });
+      updateUI();
+      closeModal('settingsModal');
+      loadLeaderboard();
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    init();
+  </script>
+</body>
+</html>
