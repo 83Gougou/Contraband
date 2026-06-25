@@ -2,252 +2,222 @@
 <html lang="fr">
 
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>💼 Contraband Online</title>
+    <meta charset="UTF-8">
 
-<link rel="stylesheet" href="style.css">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-<script src="/socket.io/socket.io.js"></script>
+    <title>
+        💼 Contraband Online
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css">
+
+    <script src="/socket.io/socket.io.js"></script>
 
 </head>
 
 <body>
 
-<div id="particles"></div>
+    <div id="particles"></div>
 
+    <!-- ========================= -->
+    <!-- MENU PRINCIPAL -->
+    <!-- ========================= -->
 
-<!-- ECRAN LOBBY -->
+    <section
+        id="lobbyScreen"
+        class="screen">
 
-<section id="lobbyScreen" class="screen">
+        <div class="panel">
 
-    <div class="logo">
-        💼
-        <h1>CONTRABAND</h1>
-        <p>Le jeu de bluff et de corruption</p>
-    </div>
+            <div class="logo">
 
+                💼
 
-    <div class="panel">
+                <h1>
+                    CONTRABAND
+                </h1>
 
-        <h2>🎮 Créer une partie</h2>
+                <p>
+                    Le jeu de bluff et de corruption
+                </p>
 
-        <input 
-        id="playerName"
-        placeholder="Ton pseudo">
+            </div>
 
-        <button onclick="createLobby()">
-            ✨ Créer un lobby
-        </button>
+            <h2>
+                🎮 Créer une partie
+            </h2>
 
+            <input
+                id="playerName"
+                maxlength="20"
+                placeholder="Ton pseudo">
 
-        <div class="separator">
-            OU
+            <button onclick="createLobby()">
+                ✨ Créer un lobby
+            </button>
+
+            <div class="separator">
+                OU
+            </div>
+
+            <input
+                id="joinCode"
+                maxlength="6"
+                placeholder="Code du lobby">
+
+            <button onclick="joinLobby()">
+                🚪 Rejoindre
+            </button>
+
         </div>
 
+    </section>
 
-        <input 
-        id="joinCode"
-        placeholder="Code du lobby">
+    <!-- ========================= -->
+    <!-- SALLE D'ATTENTE -->
+    <!-- ========================= -->
 
+    <section
+        id="waitingScreen"
+        class="screen hidden">
 
-        <button onclick="joinLobby()">
-            🚪 Rejoindre
-        </button>
+        <div class="panel lobby">
 
+            <h1>
+                🏦 Lobby :
+                <span id="lobbyCode"></span>
+            </h1>
 
-    </div>
+            <h2>
+                👥 Joueurs
+            </h2>
 
+            <div id="playersList"></div>
 
-</section>
+            <button id="startButton"
+                onclick="startGame()">
 
+                🚀 Lancer la partie
 
+            </button>
 
-<!-- SALLE D'ATTENTE -->
+        </div>
 
-<section id="waitingScreen" class="screen hidden">
+    </section>
 
+    <!-- ========================= -->
+    <!-- JEU -->
+    <!-- ========================= -->
 
-<div class="panel lobby">
+    <section
+        id="gameScreen"
+        class="hidden">
 
+        <header>
 
-<h1>
-🏦 Lobby :
-<span id="lobbyCode"></span>
-</h1>
+            <h1>
+                💼 CONTRABAND
+            </h1>
 
+            <div id="round">
+                🎲 Manche 1
+            </div>
 
-<h2>👥 Joueurs</h2>
+        </header>
 
+        <main>
 
-<div id="playersList"></div>
+            <!-- ================= -->
+            <!-- EQUIPE JOUEUR -->
+            <!-- ================= -->
 
+            <div class="side-card">
 
-<button onclick="startGame()">
-🚀 Lancer la partie
-</button>
+                <h2>
+                    🏦 Mon pays
+                </h2>
 
+                <div class="money-box">
 
-</div>
+                    💰 ATM
 
+                    <span id="myATM">
+                        300
+                    </span>
 
-</section>
+                </div>
 
+                <div class="money-box">
 
+                    🌍 Banque
 
+                    <span id="myBank">
+                        100
+                    </span>
 
+                </div>
 
+            </div>
 
-<!-- JEU -->
+            <!-- ================= -->
+            <!-- CENTRE -->
+            <!-- ================= -->
 
-<section id="gameScreen" class="hidden">
+            <div class="center">
 
+                <div id="role"></div>
 
-<header>
+                <div class="suitcase">
 
-<h1>
-💼 CONTRABAND
-</h1>
+                    <div class="case-top"></div>
 
-<div id="round">
-</div>
+                    <div class="case-body">
 
-</header>
+                        💼
 
+                        <div id="caseMoney">
+                            0 💵
+                        </div>
 
+                    </div>
 
-<main>
+                </div>
 
+                <div id="actions"></div>
 
-<!-- GAUCHE -->
+            </div>
 
-<div class="side-card">
+            <!-- ================= -->
+            <!-- INFORMATIONS -->
+            <!-- ================= -->
 
+            <div class="side-card">
 
-<h2>
-🏦 Mon pays
-</h2>
+                <h2>
+                    👥 Partie
+                </h2>
 
+                <div id="playersGame"></div>
 
-<div class="money-box">
+            </div>
 
-💰 ATM
+        </main>
 
-<span id="myATM">
-300
-</span>
+    </section>
 
-</div>
+    <!-- ========================= -->
+    <!-- POPUP -->
+    <!-- ========================= -->
 
+    <div id="popup"></div>
 
-
-<div class="money-box">
-
-🌍 Banque
-
-<span id="myBank">
-100
-</span>
-
-</div>
-
-
-</div>
-
-
-
-
-
-<!-- CENTRE -->
-
-<div class="center">
-
-
-<div id="role">
-</div>
-
-
-
-<div class="suitcase">
-
-
-<div class="case-top">
-</div>
-
-
-<div class="case-body">
-
-💼
-
-
-<div id="caseMoney">
-0
-</div>
-
-
-</div>
-
-
-</div>
-
-
-
-<div id="actions">
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-<!-- DROITE -->
-
-<div class="side-card">
-
-
-<h2>
-👥 Partie
-</h2>
-
-
-<div id="playersGame">
-
-</div>
-
-
-</div>
-
-
-
-</main>
-
-
-</section>
-
-
-
-
-
-
-
-<!-- POPUP EVENEMENTS -->
-
-
-<div id="popup">
-
-</div>
-
-
-
-
-<script src="client.js"></script>
-
+    <script src="client.js"></script>
 
 </body>
 
