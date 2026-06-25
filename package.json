@@ -1,7 +1,7 @@
 {
   "name": "contraband-multiplayer",
   "version": "1.0.0",
-  "description": "Multiplayer Contraband game with lobbies",
+  "description": "Contraband multiplayer game with simple visual UI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
