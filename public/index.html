@@ -1,566 +1,67 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Contraband – Jeu d'anime</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #111827;
-      padding: 16px 24px;
-      border-bottom: 1px solid #1f2937;
-    }
-    h1 {
-      margin: 0;
-      font-size: 24px;
-    }
-    main {
-      display: flex;
-      gap: 16px;
-      padding: 16px;
-      flex-wrap: wrap;
-    }
-    section {
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 8px;
-      padding: 12px 16px;
-      flex: 1 1 320px;
-      min-width: 280px;
-    }
-    h2 {
-      margin-top: 0;
-      font-size: 18px;
-    }
-    label {
-      display: block;
-      margin: 6px 0 2px;
-      font-size: 14px;
-    }
-    input, select, button {
-      font: inherit;
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid #374151;
-      background: #020617;
-      color: #e5e7eb;
-      margin-bottom: 6px;
-    }
-    input[type="number"] {
-      width: 120px;
-    }
-    button {
-      cursor: pointer;
-      background: #2563eb;
-      border-color: #1d4ed8;
-    }
-    button.secondary {
-      background: #4b5563;
-      border-color: #374151;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      font-size: 14px;
-    }
-    .stat-card {
-      background: #020617;
-      border-radius: 6px;
-      padding: 8px;
-      border: 1px solid #1f2937;
-    }
-    .stat-title {
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .log {
-      max-height: 260px;
-      overflow-y: auto;
-      font-size: 13px;
-      background: #020617;
-      border-radius: 6px;
-      padding: 8px;
-      border: 1px solid #1f2937;
-    }
-    .log-entry {
-      margin-bottom: 4px;
-    }
-    .tag {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: #1f2937;
-      margin-right: 4px;
-    }
-    .tag.nord { background: #1d4ed8; }
-    .tag.sud { background: #b91c1c; }
-    .tag.info { background: #6b7280; }
-    .tag.success { background: #15803d; }
-    .tag.error { background: #b91c1c; }
-    .small {
-      font-size: 12px;
-      color: #9ca3af;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>Contraband Multijoueur</title>
 </head>
-<body>
-  <header>
-    <h1>Contraband – Jeu d'anime (version simplifiée)</h1>
-    <p class="small">
-      Tout est en « unités » (0–300 max par joueur). Tu peux imaginer que 1 = 1 million.
-    </p>
-  </header>
+<body style="background:#111;color:white;font-family:sans-serif;padding:20px">
 
-  <main>
-    <!-- LOBBY / PARAMÈTRES -->
-    <section>
-      <h2>Création de lobby</h2>
-      <p class="small">
-        Configure les règles avant de commencer. On simplifie pour que ce soit humainement compréhensible.
-      </p>
+<h1>Contraband – Multijoueur</h1>
 
-      <label for="nbGames">Nombre de manches (max 50)</label>
-      <input type="number" id="nbGames" min="1" max="50" value="10" />
+<div id="menu">
+  <h2>Créer un lobby</h2>
+  <input id="playerName" placeholder="Ton pseudo"><br><br>
+  <button onclick="createLobby()">Créer</button>
 
-      <label for="startATM">Montant de départ dans l'ATM par joueur (max 300)</label>
-      <input type="number" id="startATM" min="0" max="300" value="200" />
+  <h2>Rejoindre un lobby</h2>
+  <input id="joinCode" placeholder="Code du lobby"><br><br>
+  <button onclick="joinLobby()">Rejoindre</button>
+</div>
 
-      <label for="startThird">Montant de départ dans le pays neutre par joueur</label>
-      <input type="number" id="startThird" min="0" max="100" value="50" />
+<div id="lobby" style="display:none">
+  <h2>Lobby : <span id="lobbyCode"></span></h2>
+  <h3>Joueurs :</h3>
+  <ul id="playerList"></ul>
+</div>
 
-      <label for="maxCarry">Montant max transportable par tour (valise)</label>
-      <input type="number" id="maxCarry" min="1" max="300" value="100" />
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
 
-      <label for="loan">Prêt à rembourser à la fin (par joueur)</label>
-      <input type="number" id="loan" min="0" max="300" value="40" />
+// Création lobby
+function createLobby() {
+  socket.emit("createLobby", {
+    playerName: document.getElementById("playerName").value,
+    startATM: 200,
+    startThird: 50,
+    maxCarry: 100
+  });
+}
 
-      <div class="row" style="margin-top:8px;">
-        <button id="btnStart">Démarrer la partie</button>
-        <button id="btnReset" class="secondary">Réinitialiser</button>
-      </div>
+// Rejoindre lobby
+function joinLobby() {
+  socket.emit("joinLobby", {
+    code: document.getElementById("joinCode").value,
+    playerName: document.getElementById("playerName").value
+  });
+}
 
-      <p class="small" style="margin-top:8px;">
-        Résumé des règles simplifiées :
-        <br>• Deux équipes : Nord et Sud.
-        <br>• À chaque manche, un « passeur » (smuggler) et un « douanier » (customs).
-        <br>• Le passeur choisit combien il met dans la valise (≤ montant max).
-        <br>• Le douanier choisit « Passer » ou « Douter » + un montant.
-        <br>• Le système applique automatiquement les gains/pertes selon les règles.
-      </p>
-    </section>
+socket.on("lobbyCreated", (code) => {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("lobby").style.display = "block";
+  document.getElementById("lobbyCode").textContent = code;
+});
 
-    <!-- ÉTAT DES ÉQUIPES -->
-    <section>
-      <h2>État des équipes</h2>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-title">Pays du Nord</div>
-          <div>ATM total : <span id="atmNord">0</span></div>
-          <div>Pays neutre total : <span id="thirdNord">0</span></div>
-          <div>Score final estimé : <span id="scoreNord">0</span></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-title">Pays du Sud</div>
-          <div>ATM total : <span id="atmSud">0</span></div>
-          <div>Pays neutre total : <span id="thirdSud">0</span></div>
-          <div>Score final estimé : <span id="scoreSud">0</span></div>
-        </div>
-      </div>
+socket.on("lobbyUpdate", (lobby) => {
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  lobby.players.forEach(p => {
+    const li = document.createElement("li");
+    li.textContent = p.name;
+    list.appendChild(li);
+  });
+});
+</script>
 
-      <div class="stat-card" style="margin-top:8px;">
-        <div class="stat-title">Infos partie</div>
-        <div>Manche actuelle : <span id="currentGame">0</span> / <span id="totalGames">0</span></div>
-        <div>Rôle actuel : <span id="currentRole">–</span></div>
-        <div>Équipe active : <span id="currentTeam">–</span></div>
-      </div>
-    </section>
-
-    <!-- TOUR DE JEU -->
-    <section>
-      <h2>Tour de jeu</h2>
-
-      <div class="stat-card">
-        <div class="stat-title">Choix des rôles</div>
-        <div class="row">
-          <label for="teamSelect">Équipe active</label>
-          <select id="teamSelect">
-            <option value="nord">Nord</option>
-            <option value="sud">Sud</option>
-          </select>
-
-          <label for="roleSelect">Rôle</label>
-          <select id="roleSelect">
-            <option value="smuggler">Passeur (Smuggler)</option>
-            <option value="customs">Douanier (Customs)</option>
-          </select>
-
-          <button id="btnSetRole" class="secondary">Valider les rôles</button>
-        </div>
-      </div>
-
-      <div class="stat-card" style="margin-top:8px;">
-        <div class="stat-title">Action du passeur</div>
-        <p class="small">
-          Le passeur retire de l'ATM de son pays et met jusqu'à <span id="maxCarryDisplay">0</span> dans la valise.
-        </p>
-        <label for="withdrawAmount">Montant à retirer de l'ATM</label>
-        <input type="number" id="withdrawAmount" min="0" value="0" />
-
-        <label for="carryAmount">Montant dans la valise (≤ max)</label>
-        <input type="number" id="carryAmount" min="0" value="0" />
-
-        <button id="btnSmugglerConfirm">Valider la valise</button>
-      </div>
-
-      <div class="stat-card" style="margin-top:8px;">
-        <div class="stat-title">Décision du douanier</div>
-        <p class="small">
-          Le douanier ne voit pas la valise. Il choisit « Passer » ou « Douter » + un montant.
-        </p>
-
-        <div class="row">
-          <button id="btnPass" class="secondary">Passer (valise passe)</button>
-        </div>
-
-        <label for="doubtAmount">Montant pour « Douter »</label>
-        <input type="number" id="doubtAmount" min="0" value="0" />
-
-        <button id="btnDoubt">Douter</button>
-      </div>
-    </section>
-
-    <!-- LOG / EXPLICATIONS -->
-    <section>
-      <h2>Journal & Résultat</h2>
-      <div class="log" id="log"></div>
-      <p class="small" id="finalResult"></p>
-    </section>
-  </main>
-
-  <script>
-    // État global simplifié
-    const state = {
-      totalGames: 0,
-      currentGame: 0,
-      maxCarry: 100,
-      loan: 40,
-      startATM: 200,
-      startThird: 50,
-      teams: {
-        nord: {
-          atm: 0,
-          third: 0
-        },
-        sud: {
-          atm: 0,
-          third: 0
-        }
-      },
-      currentTeam: null,   // 'nord' ou 'sud'
-      currentRole: null,   // 'smuggler' ou 'customs'
-      briefcase: 0         // montant dans la valise
-    };
-
-    // Helpers DOM
-    const $ = id => document.getElementById(id);
-
-    function logEntry(text, tags = []) {
-      const log = $('log');
-      const div = document.createElement('div');
-      div.className = 'log-entry';
-      tags.forEach(t => {
-        const span = document.createElement('span');
-        span.className = 'tag ' + t.class;
-        span.textContent = t.label;
-        div.appendChild(span);
-      });
-      const spanText = document.createElement('span');
-      spanText.textContent = ' ' + text;
-      div.appendChild(spanText);
-      log.appendChild(div);
-      log.scrollTop = log.scrollHeight;
-    }
-
-    function updateUI() {
-      $('atmNord').textContent = state.teams.nord.atm;
-      $('thirdNord').textContent = state.teams.nord.third;
-      $('atmSud').textContent = state.teams.sud.atm;
-      $('thirdSud').textContent = state.teams.sud.third;
-
-      $('currentGame').textContent = state.currentGame;
-      $('totalGames').textContent = state.totalGames;
-      $('currentRole').textContent = state.currentRole ? (state.currentRole === 'smuggler' ? 'Passeur' : 'Douanier') : '–';
-      $('currentTeam').textContent = state.currentTeam ? (state.currentTeam === 'nord' ? 'Nord' : 'Sud') : '–';
-
-      $('maxCarryDisplay').textContent = state.maxCarry;
-
-      // Estimation du score final (simplifiée)
-      const scoreNord = state.teams.nord.third - state.loan;
-      const scoreSud = state.teams.sud.third - state.loan;
-      $('scoreNord').textContent = scoreNord;
-      $('scoreSud').textContent = scoreSud;
-
-      // Résultat final si toutes les manches sont jouées
-      if (state.currentGame >= state.totalGames && state.totalGames > 0) {
-        let txt = '';
-        if (scoreNord > scoreSud) {
-          txt = `Victoire du Nord (${scoreNord} contre ${scoreSud}).`;
-        } else if (scoreSud > scoreNord) {
-          txt = `Victoire du Sud (${scoreSud} contre ${scoreNord}).`;
-        } else {
-          txt = `Égalité parfaite (${scoreNord} chacun).`;
-        }
-        $('finalResult').textContent = 'Résultat final (version simplifiée, prêt déjà soustrait) : ' + txt;
-      } else {
-        $('finalResult').textContent = '';
-      }
-    }
-
-    function resetGame() {
-      state.totalGames = 0;
-      state.currentGame = 0;
-      state.maxCarry = 100;
-      state.loan = 40;
-      state.startATM = 200;
-      state.startThird = 50;
-      state.teams.nord.atm = 0;
-      state.teams.nord.third = 0;
-      state.teams.sud.atm = 0;
-      state.teams.sud.third = 0;
-      state.currentTeam = null;
-      state.currentRole = null;
-      state.briefcase = 0;
-      $('log').innerHTML = '';
-      $('finalResult').textContent = '';
-      updateUI();
-    }
-
-    // Démarrer la partie avec les paramètres du lobby
-    $('btnStart').addEventListener('click', () => {
-      const nbGames = parseInt($('nbGames').value, 10);
-      const startATM = parseInt($('startATM').value, 10);
-      const startThird = parseInt($('startThird').value, 10);
-      const maxCarry = parseInt($('maxCarry').value, 10);
-      const loan = parseInt($('loan').value, 10);
-
-      if (isNaN(nbGames) || nbGames < 1 || nbGames > 50) {
-        alert('Nombre de manches invalide (1–50).');
-        return;
-      }
-      if (startATM < 0 || startATM > 300) {
-        alert('Montant ATM doit être entre 0 et 300.');
-        return;
-      }
-      if (maxCarry < 1 || maxCarry > 300) {
-        alert('Montant max transportable doit être entre 1 et 300.');
-        return;
-      }
-
-      state.totalGames = nbGames;
-      state.currentGame = 1;
-      state.startATM = startATM;
-      state.startThird = startThird;
-      state.maxCarry = maxCarry;
-      state.loan = loan;
-
-      // On suppose 3 joueurs par équipe pour simplifier, mais on ne gère pas chaque joueur individuellement.
-      // On multiplie juste par 3 pour avoir un total d'équipe.
-      state.teams.nord.atm = startATM * 3;
-      state.teams.sud.atm = startATM * 3;
-      state.teams.nord.third = startThird * 3;
-      state.teams.sud.third = startThird * 3;
-
-      $('log').innerHTML = '';
-      logEntry(`Partie démarrée : ${nbGames} manches, ATM départ ${startATM}, pays neutre départ ${startThird}, max valise ${maxCarry}, prêt ${loan}.`, [
-        { class: 'info', label: 'INFO' }
-      ]);
-
-      updateUI();
-    });
-
-    $('btnReset').addEventListener('click', () => {
-      resetGame();
-      logEntry('Partie réinitialisée.', [{ class: 'info', label: 'INFO' }]);
-    });
-
-    // Choix des rôles
-    $('btnSetRole').addEventListener('click', () => {
-      const team = $('teamSelect').value; // 'nord' ou 'sud'
-      const role = $('roleSelect').value; // 'smuggler' ou 'customs'
-      state.currentTeam = team;
-      state.currentRole = role;
-      state.briefcase = 0;
-
-      logEntry(`Nouvelle manche ${state.currentGame} – Équipe active : ${team === 'nord' ? 'Nord' : 'Sud'}, rôle : ${role === 'smuggler' ? 'Passeur' : 'Douanier'}.`, [
-        { class: team === 'nord' ? 'nord' : 'sud', label: team === 'nord' ? 'NORD' : 'SUD' },
-        { class: 'info', label: 'RÔLE' }
-      ]);
-
-      updateUI();
-    });
-
-    // Action du passeur
-    $('btnSmugglerConfirm').addEventListener('click', () => {
-      if (state.currentRole !== 'smuggler') {
-        alert('Le rôle actuel n\'est pas Passeur.');
-        return;
-      }
-      if (!state.currentTeam) {
-        alert('Choisis une équipe active.');
-        return;
-      }
-
-      const withdraw = parseInt($('withdrawAmount').value, 10) || 0;
-      const carry = parseInt($('carryAmount').value, 10) || 0;
-
-      if (carry > state.maxCarry) {
-        alert('La valise dépasse le montant max autorisé.');
-        return;
-      }
-      if (withdraw < carry) {
-        alert('Tu dois retirer au moins autant que ce que tu mets dans la valise.');
-        return;
-      }
-
-      const team = state.teams[state.currentTeam];
-      if (team.atm < withdraw) {
-        alert('ATM insuffisant pour ce retrait.');
-        return;
-      }
-
-      team.atm -= withdraw;
-      state.briefcase = carry;
-
-      logEntry(`Le passeur de ${state.currentTeam === 'nord' ? 'Nord' : 'Sud'} retire ${withdraw} de l'ATM et met ${carry} dans la valise.`, [
-        { class: state.currentTeam === 'nord' ? 'nord' : 'sud', label: state.currentTeam === 'nord' ? 'NORD' : 'SUD' },
-        { class: 'info', label: 'PASSEUR' }
-      ]);
-
-      updateUI();
-    });
-
-    // Douanier : Passer
-    $('btnPass').addEventListener('click', () => {
-      if (state.currentRole !== 'customs') {
-        alert('Le rôle actuel n\'est pas Douanier.');
-        return;
-      }
-      if (!state.currentTeam) {
-        alert('Choisis une équipe active.');
-        return;
-      }
-
-      const otherTeamKey = state.currentTeam === 'nord' ? 'sud' : 'nord';
-      const otherTeam = state.teams[otherTeamKey];
-
-      // Si la valise contient de l'argent, il va au pays neutre de l'équipe du passeur (ici on suppose que l'équipe active est le douanier, donc l'autre est le passeur).
-      const amount = state.briefcase;
-      if (amount > 0) {
-        otherTeam.third += amount;
-        logEntry(`Le douanier de ${state.currentTeam === 'nord' ? 'Nord' : 'Sud'} dit « Passer ». La valise de l'autre équipe (${amount}) arrive au pays neutre.`, [
-          { class: state.currentTeam === 'nord' ? 'nord' : 'sud', label: state.currentTeam === 'nord' ? 'NORD' : 'SUD' },
-          { class: 'success', label: 'PASSER' }
-        ]);
-      } else {
-        logEntry(`Le douanier dit « Passer », mais la valise était vide. Rien ne se passe.`, [
-          { class: 'info', label: 'VIDE' }
-        ]);
-      }
-
-      endTurn();
-    });
-
-    // Douanier : Douter
-    $('btnDoubt').addEventListener('click', () => {
-      if (state.currentRole !== 'customs') {
-        alert('Le rôle actuel n\'est pas Douanier.');
-        return;
-      }
-      if (!state.currentTeam) {
-        alert('Choisis une équipe active.');
-        return;
-      }
-
-      const doubtAmount = parseInt($('doubtAmount').value, 10) || 0;
-      const caseAmount = state.briefcase;
-      const customsTeam = state.teams[state.currentTeam];
-      const smugglerTeamKey = state.currentTeam === 'nord' ? 'sud' : 'nord';
-      const smugglerTeam = state.teams[smugglerTeamKey];
-
-      if (doubtAmount <= 0) {
-        alert('Le montant de doute doit être > 0.');
-        return;
-      }
-
-      if (caseAmount === 0) {
-        // Valise vide → indemnité à l'autre pays (la moitié du montant de doute)
-        const indemnity = Math.floor(doubtAmount / 2);
-        smugglerTeam.third += indemnity;
-        logEntry(`Le douanier doute (${doubtAmount}) mais la valise est vide. Indemnité de ${indemnity} pour l'autre pays (pays neutre).`, [
-          { class: state.currentTeam === 'nord' ? 'nord' : 'sud', label: state.currentTeam === 'nord' ? 'NORD' : 'SUD' },
-          { class: 'error', label: 'MAUVAIS DOUTE' }
-        ]);
-      } else if (doubtAmount >= caseAmount) {
-        // Douanier gagne l'argent pour son pays (ATM)
-        customsTeam.atm += caseAmount;
-        logEntry(`Le douanier doute (${doubtAmount}) et a raison (valise = ${caseAmount}). Il récupère ${caseAmount} pour l'ATM de son pays.`, [
-          { class: state.currentTeam === 'nord' ? 'nord' : 'sud', label: state.currentTeam === 'nord' ? 'NORD' : 'SUD' },
-          { class: 'success', label: 'DOUTE RÉUSSI' }
-        ]);
-      } else {
-        // Douanier sous-estime → le passeur gagne tout + indemnité
-        const indemnity = Math.floor(doubtAmount / 2);
-        const totalGain = caseAmount + indemnity;
-        smugglerTeam.third += totalGain;
-        logEntry(`Le douanier doute (${doubtAmount}) mais sous-estime (valise = ${caseAmount}). Le passeur gagne ${caseAmount} + indemnité ${indemnity} = ${totalGain} au pays neutre.`, [
-          { class: state.currentTeam === 'nord' ? 'nord' : 'sud', label: state.currentTeam === 'nord' ? 'NORD' : 'SUD' },
-          { class: 'error', label: 'DOUTE RATÉ' }
-        ]);
-      }
-
-      endTurn();
-    });
-
-    function endTurn() {
-      // Fin de la manche : on passe à la suivante
-      state.briefcase = 0;
-      state.currentRole = null;
-      state.currentTeam = null;
-
-      if (state.currentGame < state.totalGames) {
-        state.currentGame += 1;
-        logEntry(`Fin de la manche. On passe à la manche ${state.currentGame}.`, [
-          { class: 'info', label: 'MANCHE' }
-        ]);
-      } else {
-        logEntry('Toutes les manches sont terminées. Calcul du résultat final simplifié.', [
-          { class: 'info', label: 'FIN' }
-        ]);
-      }
-
-      updateUI();
-    }
-
-    // Init
-    resetGame();
-  </script>
 </body>
 </html>
