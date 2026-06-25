@@ -1,271 +1,318 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Contraband – Jeu</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-    }
-    .page {
-      display: none;
-      padding: 20px;
-    }
-    .active {
-      display: block;
-    }
-    h1, h2 {
-      margin-top: 0;
-    }
-    button {
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .green { background: #2ea043; color: white; }
-    .blue { background: #218bff; color: white; }
-    .red { background: #f85149; color: white; }
-    .card {
-      background: #161b22;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      border: 1px solid #30363d;
-    }
-    input, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 4px;
-      margin-bottom: 12px;
-      border-radius: 6px;
-      border: 1px solid #30363d;
-      background: #0d1117;
-      color: white;
-    }
-    .row {
-      display: flex;
-      gap: 20px;
-    }
-    .mallette {
-      width: 180px;
-      height: 120px;
-      background: #8b5a2b;
-      border: 4px solid #5a3a1a;
-      border-radius: 8px;
-      margin: 20px auto;
-      position: relative;
-    }
-    .mallette::after {
-      content: "💼";
-      font-size: 60px;
-      position: absolute;
-      top: 20px;
-      left: 55px;
-    }
-    .log {
-      background: #161b22;
-      border: 1px solid #30363d;
-      padding: 10px;
-      height: 200px;
-      overflow-y: auto;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Contrebande</title>
+
+<style>
+
+body{
+    font-family:Arial,sans-serif;
+    background:#121212;
+    color:white;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+    text-align:center;
+    color:#ffd700;
+}
+
+.box{
+    background:#1f1f1f;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:20px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    margin-bottom:15px;
+}
+
+button{
+    background:#ffd700;
+    border:none;
+    padding:12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+    width:100%;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+.team{
+    background:#252525;
+    padding:15px;
+    border-radius:15px;
+}
+
+.money{
+    color:#4cff4c;
+    font-size:22px;
+    font-weight:bold;
+}
+
+.result{
+    font-size:22px;
+    text-align:center;
+    margin-top:20px;
+}
+
+</style>
 </head>
+
 <body>
 
-<!-- PAGE 1 : LOBBY -->
-<div id="page-lobby" class="page active">
-  <h1>Créer un lobby</h1>
+<h1>💼 CONTREBANDE</h1>
 
-  <div class="card">
-    <label>Argent ATM par joueur (max 300)</label>
-    <input id="atmStart" type="number" value="150" max="300">
+<div class="box">
 
-    <label>Argent Pays Neutre par joueur</label>
-    <input id="thirdStart" type="number" value="50">
+<h2>Création du Lobby</h2>
 
-    <label>Prêt à rembourser</label>
-    <input id="loan" type="number" value="40">
+<label>Argent ATM de départ</label>
+<input id="startATM" type="number" value="300">
 
-    <label>Nombre de manches</label>
-    <input id="rounds" type="number" value="10">
-  </div>
+<label>Argent Banque Internationale</label>
+<input id="startBank" type="number" value="100">
 
-  <button class="green" onclick="goToWaiting()">Créer la partie</button>
+<label>Nombre de manches</label>
+<input id="rounds" type="number" value="50">
+
+<label>Transport maximum</label>
+<input id="maxTransport" type="number" value="100">
+
+<button onclick="startGame()">Créer la partie</button>
+
 </div>
 
-<!-- PAGE 2 : SALLE D’ATTENTE -->
-<div id="page-waiting" class="page">
-  <h1>Salle d’attente</h1>
+<div id="game" style="display:none;">
 
-  <div class="card">
-    <label>Smuggler (contrebandier)</label>
-    <select id="smugglerSelect">
-      <option value="north">Pays Nord</option>
-      <option value="south">Pays Sud</option>
-    </select>
+<div class="grid">
 
-    <label>Douanier</label>
-    <select id="inspectorSelect">
-      <option value="south">Pays Sud</option>
-      <option value="north">Pays Nord</option>
-    </select>
-  </div>
+<div class="team">
 
-  <button class="blue" onclick="startGame()">Commencer la partie</button>
+<h2>🔵 Nord</h2>
+
+ATM :
+<div class="money" id="northATM"></div>
+
+Banque :
+<div class="money" id="northBank"></div>
+
 </div>
 
-<!-- PAGE 3 : JEU -->
-<div id="page-game" class="page">
-  <h1>Manche <span id="roundNumber"></span></h1>
+<div class="team">
 
-  <div class="row">
-    <div class="card" style="flex:1;">
-      <h2>Smuggler</h2>
-      <p id="smugglerTeamText"></p>
+<h2>🔴 Sud</h2>
 
-      <label>Mettre dans la mallette (max 100)</label>
-      <input id="smuggleAmount" type="number" value="0" max="100">
+ATM :
+<div class="money" id="southATM"></div>
 
-      <button class="green" onclick="prepareMallette()">Préparer la mallette</button>
-    </div>
+Banque :
+<div class="money" id="southBank"></div>
 
-    <div class="card" style="flex:1;">
-      <h2>Douanier</h2>
-      <p id="inspectorTeamText"></p>
+</div>
 
-      <button class="blue" onclick="actionPass()">PASS</button>
+</div>
 
-      <label>Montant pour DOUTE</label>
-      <input id="doubtAmount" type="number" value="0" max="100">
+<div class="box">
 
-      <button class="red" onclick="actionDoubt()">DOUTE</button>
-    </div>
-  </div>
+<h2>Tour actuel</h2>
 
-  <div class="mallette"></div>
+<div id="turnInfo"></div>
 
-  <h2>Journal</h2>
-  <div class="log" id="logBox"></div>
+<br>
 
-  <button class="blue" onclick="nextRound()">Manche suivante</button>
+<label>Montant transporté</label>
+<input id="smuggleAmount" type="number">
+
+<label>Doute du douanier</label>
+<input id="doubtAmount" type="number">
+
+<button onclick="playTurn()">Valider le tour</button>
+
+</div>
+
+<div class="result" id="result"></div>
+
 </div>
 
 <script>
-  // STATE
-  const state = {
-    config: {},
-    round: 1,
-    smuggler: "north",
-    inspector: "south",
-    mallette: 0,
-    teams: {
-      north: { atm: 0, third: 0 },
-      south: { atm: 0, third: 0 }
-    }
-  };
 
-  function showPage(id) {
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-  }
+let game = {};
 
-  function goToWaiting() {
-    state.config = {
-      atm: Number(document.getElementById("atmStart").value),
-      third: Number(document.getElementById("thirdStart").value),
-      loan: Number(document.getElementById("loan").value),
-      rounds: Number(document.getElementById("rounds").value)
-    };
+function startGame(){
 
-    state.teams.north.atm = state.config.atm;
-    state.teams.south.atm = state.config.atm;
-    state.teams.north.third = state.config.third;
-    state.teams.south.third = state.config.third;
+game = {
 
-    showPage("page-waiting");
-  }
+northATM: Number(startATM.value),
+southATM: Number(startATM.value),
 
-  function startGame() {
-    state.smuggler = document.getElementById("smugglerSelect").value;
-    state.inspector = document.getElementById("inspectorSelect").value;
+northBank: Number(startBank.value),
+southBank: Number(startBank.value),
 
-    document.getElementById("smugglerTeamText").textContent =
-      "Équipe : " + (state.smuggler === "north" ? "Pays Nord" : "Pays Sud");
+maxTransport:Number(maxTransport.value),
 
-    document.getElementById("inspectorTeamText").textContent =
-      "Équipe : " + (state.inspector === "north" ? "Pays Nord" : "Pays Sud");
+rounds:Number(rounds.value),
 
-    document.getElementById("roundNumber").textContent = state.round;
+currentRound:1,
 
-    showPage("page-game");
-  }
+currentTeam:"north"
 
-  function log(msg) {
-    const box = document.getElementById("logBox");
-    box.innerHTML += "<div>• " + msg + "</div>";
-    box.scrollTop = box.scrollHeight;
-  }
+};
 
-  function prepareMallette() {
-    const amount = Number(document.getElementById("smuggleAmount").value);
-    if (amount > 100) return log("Impossible : max 100.");
-    if (state.teams[state.smuggler].atm < amount) return log("Pas assez d'argent dans l'ATM.");
+updateUI();
 
-    state.teams[state.smuggler].atm -= amount;
-    state.mallette = amount;
+document.getElementById("game").style.display="block";
 
-    log("Le smuggler prépare une mallette avec " + amount + " unités.");
-  }
+}
 
-  function actionPass() {
-    if (state.mallette > 0) {
-      state.teams[state.smuggler].third += state.mallette;
-      log("PASS : " + state.mallette + " unités passent au pays neutre.");
-    } else {
-      log("PASS : mallette vide, rien ne se passe.");
-    }
-    state.mallette = 0;
-  }
+function updateUI(){
 
-  function actionDoubt() {
-    const doubt = Number(document.getElementById("doubtAmount").value);
+northATM.innerText=game.northATM;
+southATM.innerText=game.southATM;
 
-    if (state.mallette === 0) {
-      const indemnity = Math.floor(doubt / 2);
-      state.teams[state.smuggler].third += indemnity;
-      log("DOUTE raté : mallette vide → indemnité " + indemnity);
-    } else {
-      if (doubt >= state.mallette) {
-        state.teams[state.inspector].third += state.mallette;
-        log("DOUTE réussi : le douanier prend " + state.mallette);
-      } else {
-        const indemnity = state.mallette - doubt;
-        state.teams[state.smuggler].third += state.mallette + indemnity;
-        log("DOUTE raté : smuggler gagne " + state.mallette + " + indemnité " + indemnity);
-      }
-    }
+northBank.innerText=game.northBank;
+southBank.innerText=game.southBank;
 
-    state.mallette = 0;
-  }
+turnInfo.innerHTML=
+"Manche "+game.currentRound+
+" / "+game.rounds+
+"<br><br>"+
+(game.currentTeam==="north" ?
+"🔵 Le Nord fait passer de l'argent"
+:
+"🔴 Le Sud fait passer de l'argent");
 
-  function nextRound() {
-    state.round++;
-    if (state.round > state.config.rounds) {
-      log("FIN DE PARTIE !");
-      return;
-    }
-    document.getElementById("roundNumber").textContent = state.round;
-    log("Nouvelle manche.");
-  }
+}
+
+function playTurn(){
+
+let amount = Number(smuggleAmount.value);
+let doubt = Number(doubtAmount.value);
+
+if(amount<0){
+alert("Montant invalide");
+return;
+}
+
+if(amount > game.maxTransport){
+alert("Maximum : "+game.maxTransport);
+return;
+}
+
+if(game.currentTeam==="north"){
+
+if(amount>game.northATM){
+alert("Pas assez d'argent.");
+return;
+}
+
+game.northATM-=amount;
+
+if(doubt>=amount){
+
+game.southBank+=amount;
+
+}else{
+
+game.northBank+=amount;
+
+let indemnity=Math.floor((amount-doubt)/2);
+
+game.northBank+=indemnity;
+
+}
+
+}else{
+
+if(amount>game.southATM){
+alert("Pas assez d'argent.");
+return;
+}
+
+game.southATM-=amount;
+
+if(doubt>=amount){
+
+game.northBank+=amount;
+
+}else{
+
+game.southBank+=amount;
+
+let indemnity=Math.floor((amount-doubt)/2);
+
+game.southBank+=indemnity;
+
+}
+
+}
+
+if(game.currentTeam==="north"){
+game.currentTeam="south";
+}else{
+game.currentTeam="north";
+game.currentRound++;
+}
+
+if(game.currentRound>game.rounds){
+
+endGame();
+return;
+
+}
+
+updateUI();
+
+smuggleAmount.value="";
+doubtAmount.value="";
+
+}
+
+function endGame(){
+
+game.northBank += Math.floor(game.southATM/2);
+game.southBank += Math.floor(game.northATM/2);
+
+let winner="";
+
+if(game.northBank>game.southBank){
+
+winner="🏆 Victoire du Nord";
+
+}else if(game.southBank>game.northBank){
+
+winner="🏆 Victoire du Sud";
+
+}else{
+
+winner="🤝 Egalité";
+
+}
+
+result.innerHTML=
+winner+
+"<br><br>"+
+"Nord : "+game.northBank+
+"<br>"+
+"Sud : "+game.southBank;
+
+}
+
 </script>
 
 </body>
