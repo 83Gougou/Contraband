@@ -1,7 +1,7 @@
 {
-  "name": "contraband-jeu",
+  "name": "contrebande-game",
   "version": "1.0.0",
-  "description": "Jeu Contraband simplifié en Node.js pour Render",
+  "description": "Jeu Contrebande inspiré de Tomodachi Game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
