@@ -2,536 +2,271 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Contraband – Jeu simplifié</title>
+  <title>Contraband – Jeu</title>
   <style>
     body {
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
       margin: 0;
-      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
     }
-    header {
-      padding: 16px 24px;
-      background: #111827;
-      border-bottom: 1px solid #1f2937;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .page {
+      display: none;
+      padding: 20px;
     }
-    header h1 {
-      margin: 0;
-      font-size: 1.4rem;
-    }
-    main {
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 16px;
-    }
-    section {
-      background: #111827;
-      border-radius: 8px;
-      padding: 12px 16px;
-      border: 1px solid #1f2937;
-    }
-    h2 {
-      margin-top: 0;
-      font-size: 1.1rem;
-    }
-    label {
+    .active {
       display: block;
-      margin-bottom: 4px;
-      font-size: 0.9rem;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .green { background: #2ea043; color: white; }
+    .blue { background: #218bff; color: white; }
+    .red { background: #f85149; color: white; }
+    .card {
+      background: #161b22;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid #30363d;
     }
     input, select {
       width: 100%;
-      padding: 6px 8px;
-      margin-bottom: 8px;
-      border-radius: 4px;
-      border: 1px solid #374151;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 0.9rem;
-    }
-    button {
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    button.primary {
-      background: #22c55e;
-      color: #022c22;
-    }
-    button.secondary {
-      background: #3b82f6;
-      color: #e5e7eb;
-    }
-    button.danger {
-      background: #ef4444;
-      color: #fee2e2;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+      padding: 8px;
+      margin-top: 4px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: white;
     }
     .row {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      gap: 20px;
     }
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      background: #1f2937;
-      margin-right: 4px;
+    .mallette {
+      width: 180px;
+      height: 120px;
+      background: #8b5a2b;
+      border: 4px solid #5a3a1a;
+      border-radius: 8px;
+      margin: 20px auto;
+      position: relative;
     }
-    .team {
-      margin-bottom: 8px;
-      padding: 8px;
-      border-radius: 6px;
-      background: #020617;
-      border: 1px solid #1f2937;
-    }
-    .team h3 {
-      margin: 0 0 4px 0;
-      font-size: 0.95rem;
+    .mallette::after {
+      content: "💼";
+      font-size: 60px;
+      position: absolute;
+      top: 20px;
+      left: 55px;
     }
     .log {
-      max-height: 260px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 10px;
+      height: 200px;
       overflow-y: auto;
-      font-size: 0.85rem;
-      background: #020617;
-      padding: 8px;
       border-radius: 6px;
-      border: 1px solid #1f2937;
-    }
-    .log-entry {
-      margin-bottom: 4px;
-      border-bottom: 1px dashed #1f2937;
-      padding-bottom: 4px;
-    }
-    .highlight {
-      color: #22c55e;
-    }
-    .warning {
-      color: #f97316;
-    }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Contraband – Version simplifiée</h1>
-    <span class="badge">Node.js / Render • Interface en français</span>
-  </header>
 
-  <main>
-    <!-- CONFIG / LOBBY -->
-    <section>
-      <h2>Création de lobby</h2>
-      <p style="font-size:0.85rem;">
-        Configure les règles avant de lancer la partie.  
-        Les montants sont en « unités » (max 300 par joueur).
-      </p>
+<!-- PAGE 1 : LOBBY -->
+<div id="page-lobby" class="page active">
+  <h1>Créer un lobby</h1>
 
-      <label for="startAtm">Argent de départ dans l'ATM par joueur (max 300)</label>
-      <input type="number" id="startAtm" min="0" max="300" value="150" />
+  <div class="card">
+    <label>Argent ATM par joueur (max 300)</label>
+    <input id="atmStart" type="number" value="150" max="300">
 
-      <label for="startThird">Argent de départ dans le « Pays neutre » par joueur</label>
-      <input type="number" id="startThird" min="0" max="300" value="50" />
+    <label>Argent Pays Neutre par joueur</label>
+    <input id="thirdStart" type="number" value="50">
 
-      <label for="loanAmount">Prêt à rembourser à la fin</label>
-      <input type="number" id="loanAmount" min="0" max="300" value="40" />
+    <label>Prêt à rembourser</label>
+    <input id="loan" type="number" value="40">
 
-      <label for="gamesCount">Nombre de « jeux » dans la manche</label>
-      <input type="number" id="gamesCount" min="1" max="50" value="10" />
+    <label>Nombre de manches</label>
+    <input id="rounds" type="number" value="10">
+  </div>
 
-      <div class="row">
-        <button class="primary" id="btnStart">Lancer la partie</button>
-        <button class="secondary" id="btnReset">Réinitialiser</button>
-      </div>
+  <button class="green" onclick="goToWaiting()">Créer la partie</button>
+</div>
 
-      <hr style="margin:12px 0;border-color:#1f2937;" />
+<!-- PAGE 2 : SALLE D’ATTENTE -->
+<div id="page-waiting" class="page">
+  <h1>Salle d’attente</h1>
 
-      <h2>Résumé des règles (simplifiées)</h2>
-      <ul style="font-size:0.8rem;padding-left:18px;">
-        <li>Deux équipes : <b>Pays Nord</b> et <b>Pays Sud</b>.</li>
-        <li>Chaque joueur a un compte ATM et un compte « Pays neutre ».</li>
-        <li>On choisit un <b>smuggler</b> (contrebandier) et un <b>douanier</b>.</li>
-        <li>Le smuggler transporte jusqu’à 100 unités par tour dans une mallette.</li>
-        <li>Le douanier dit soit <b>PASS</b> (il pense que la mallette est vide), soit <b>DOUTE + montant</b>.</li>
-        <li>Selon le montant réel dans la mallette, l’argent va soit au pays du douanier, soit au pays neutre, soit en indemnité.</li>
-        <li>À la fin, on calcule l’argent hors du pays + on rembourse le prêt.</li>
-      </ul>
-    </section>
+  <div class="card">
+    <label>Smuggler (contrebandier)</label>
+    <select id="smugglerSelect">
+      <option value="north">Pays Nord</option>
+      <option value="south">Pays Sud</option>
+    </select>
 
-    <!-- JEU / INTERFACE PRINCIPALE -->
-    <section>
-      <h2>Partie en cours</h2>
+    <label>Douanier</label>
+    <select id="inspectorSelect">
+      <option value="south">Pays Sud</option>
+      <option value="north">Pays Nord</option>
+    </select>
+  </div>
 
-      <div class="grid-2">
-        <div class="team" id="teamNorth">
-          <h3>Pays Nord</h3>
-          <div>ATM total : <span id="northAtm">0</span></div>
-          <div>Pays neutre total : <span id="northThird">0</span></div>
-          <div>Indemnités : <span id="northIndemnities">0</span></div>
-        </div>
-        <div class="team" id="teamSouth">
-          <h3>Pays Sud</h3>
-          <div>ATM total : <span id="southAtm">0</span></div>
-          <div>Pays neutre total : <span id="southThird">0</span></div>
-          <div>Indemnités : <span id="southIndemnities">0</span></div>
-        </div>
-      </div>
+  <button class="blue" onclick="startGame()">Commencer la partie</button>
+</div>
 
-      <p style="font-size:0.85rem;margin-top:8px;">
-        Jeu actuel : <span id="currentGame">0</span> / <span id="totalGames">0</span>  
-        • Rôle actuel : <span id="currentRole">–</span>
-      </p>
+<!-- PAGE 3 : JEU -->
+<div id="page-game" class="page">
+  <h1>Manche <span id="roundNumber"></span></h1>
 
-      <hr style="margin:12px 0;border-color:#1f2937;" />
+  <div class="row">
+    <div class="card" style="flex:1;">
+      <h2>Smuggler</h2>
+      <p id="smugglerTeamText"></p>
 
-      <!-- CONTROLES DU TOUR -->
-      <h2>Tour de jeu</h2>
-      <div class="row" style="margin-bottom:8px;">
-        <button class="secondary" id="btnSwitchRoles">Changer les rôles (Nord & Sud)</button>
-        <button class="secondary" id="btnNextGame">Passer au jeu suivant</button>
-      </div>
+      <label>Mettre dans la mallette (max 100)</label>
+      <input id="smuggleAmount" type="number" value="0" max="100">
 
-      <div class="grid-2">
-        <!-- Smuggler -->
-        <div>
-          <h3>Smuggler (contrebandier)</h3>
-          <label for="smugglerTeam">Équipe du smuggler</label>
-          <select id="smugglerTeam">
-            <option value="north">Pays Nord</option>
-            <option value="south">Pays Sud</option>
-          </select>
+      <button class="green" onclick="prepareMallette()">Préparer la mallette</button>
+    </div>
 
-          <label for="smugglerAmount">Montant dans la mallette (max 100)</label>
-          <input type="number" id="smugglerAmount" min="0" max="100" value="0" />
+    <div class="card" style="flex:1;">
+      <h2>Douanier</h2>
+      <p id="inspectorTeamText"></p>
 
-          <button class="primary" id="btnPrepareSmuggle">Préparer la mallette</button>
-          <p id="smugglerInfo" style="font-size:0.8rem;margin-top:4px;"></p>
-        </div>
+      <button class="blue" onclick="actionPass()">PASS</button>
 
-        <!-- Douanier -->
-        <div>
-          <h3>Douanier (customs inspector)</h3>
-          <label for="inspectorTeam">Équipe du douanier</label>
-          <select id="inspectorTeam">
-            <option value="north">Pays Nord</option>
-            <option value="south">Pays Sud</option>
-          </select>
+      <label>Montant pour DOUTE</label>
+      <input id="doubtAmount" type="number" value="0" max="100">
 
-          <div class="row" style="margin-top:4px;margin-bottom:4px;">
-            <button class="secondary" id="btnPass">PASS (je pense que c’est vide)</button>
-            <button class="danger" id="btnDoubt">DOUTE (je pense qu’il y a de l’argent)</button>
-          </div>
+      <button class="red" onclick="actionDoubt()">DOUTE</button>
+    </div>
+  </div>
 
-          <label for="doubtAmount">Montant annoncé pour DOUTE</label>
-          <input type="number" id="doubtAmount" min="0" max="100" value="0" />
+  <div class="mallette"></div>
 
-          <p id="inspectorInfo" style="font-size:0.8rem;margin-top:4px;"></p>
-        </div>
-      </div>
+  <h2>Journal</h2>
+  <div class="log" id="logBox"></div>
 
-      <hr style="margin:12px 0;border-color:#1f2937;" />
+  <button class="blue" onclick="nextRound()">Manche suivante</button>
+</div>
 
-      <!-- LOG / RESULTATS -->
-      <h2>Journal de la manche</h2>
-      <div class="log" id="log"></div>
+<script>
+  // STATE
+  const state = {
+    config: {},
+    round: 1,
+    smuggler: "north",
+    inspector: "south",
+    mallette: 0,
+    teams: {
+      north: { atm: 0, third: 0 },
+      south: { atm: 0, third: 0 }
+    }
+  };
 
-      <h2>Résultat final (après la dernière manche)</h2>
-      <p style="font-size:0.85rem;">
-        Pays Nord total hors pays : <span id="northFinal">0</span>  
-        • Pays Sud total hors pays : <span id="southFinal">0</span>
-      </p>
-      <p style="font-size:0.9rem;" id="winnerText"></p>
-    </section>
-  </main>
+  function showPage(id) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  }
 
-  <script>
-    // État du jeu
-    const state = {
-      config: {
-        startAtm: 150,
-        startThird: 50,
-        loanAmount: 40,
-        gamesCount: 10
-      },
-      game: {
-        currentGame: 0,
-        totalGames: 0,
-        currentRole: 'Nord smuggle / Sud douane'
-      },
-      teams: {
-        north: {
-          atm: 0,
-          third: 0,
-          indemnities: 0
-        },
-        south: {
-          atm: 0,
-          third: 0,
-          indemnities: 0
-        }
-      },
-      smuggle: {
-        team: 'north',
-        amount: 0,
-        prepared: false
-      }
+  function goToWaiting() {
+    state.config = {
+      atm: Number(document.getElementById("atmStart").value),
+      third: Number(document.getElementById("thirdStart").value),
+      loan: Number(document.getElementById("loan").value),
+      rounds: Number(document.getElementById("rounds").value)
     };
 
-    // Helpers DOM
-    const $ = (id) => document.getElementById(id);
+    state.teams.north.atm = state.config.atm;
+    state.teams.south.atm = state.config.atm;
+    state.teams.north.third = state.config.third;
+    state.teams.south.third = state.config.third;
 
-    function log(message, type = 'normal') {
-      const logDiv = $('log');
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-      if (type === 'success') entry.classList.add('highlight');
-      if (type === 'warning') entry.classList.add('warning');
-      entry.textContent = message;
-      logDiv.prepend(entry);
+    showPage("page-waiting");
+  }
+
+  function startGame() {
+    state.smuggler = document.getElementById("smugglerSelect").value;
+    state.inspector = document.getElementById("inspectorSelect").value;
+
+    document.getElementById("smugglerTeamText").textContent =
+      "Équipe : " + (state.smuggler === "north" ? "Pays Nord" : "Pays Sud");
+
+    document.getElementById("inspectorTeamText").textContent =
+      "Équipe : " + (state.inspector === "north" ? "Pays Nord" : "Pays Sud");
+
+    document.getElementById("roundNumber").textContent = state.round;
+
+    showPage("page-game");
+  }
+
+  function log(msg) {
+    const box = document.getElementById("logBox");
+    box.innerHTML += "<div>• " + msg + "</div>";
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function prepareMallette() {
+    const amount = Number(document.getElementById("smuggleAmount").value);
+    if (amount > 100) return log("Impossible : max 100.");
+    if (state.teams[state.smuggler].atm < amount) return log("Pas assez d'argent dans l'ATM.");
+
+    state.teams[state.smuggler].atm -= amount;
+    state.mallette = amount;
+
+    log("Le smuggler prépare une mallette avec " + amount + " unités.");
+  }
+
+  function actionPass() {
+    if (state.mallette > 0) {
+      state.teams[state.smuggler].third += state.mallette;
+      log("PASS : " + state.mallette + " unités passent au pays neutre.");
+    } else {
+      log("PASS : mallette vide, rien ne se passe.");
     }
+    state.mallette = 0;
+  }
 
-    function syncConfigFromInputs() {
-      state.config.startAtm = Math.min(300, Math.max(0, Number($('startAtm').value || 0)));
-      state.config.startThird = Math.max(0, Number($('startThird').value || 0));
-      state.config.loanAmount = Math.max(0, Number($('loanAmount').value || 0));
-      state.config.gamesCount = Math.max(1, Number($('gamesCount').value || 1));
-    }
+  function actionDoubt() {
+    const doubt = Number(document.getElementById("doubtAmount").value);
 
-    function initGame() {
-      syncConfigFromInputs();
-
-      state.teams.north.atm = state.config.startAtm;
-      state.teams.south.atm = state.config.startAtm;
-      state.teams.north.third = state.config.startThird;
-      state.teams.south.third = state.config.startThird;
-      state.teams.north.indemnities = 0;
-      state.teams.south.indemnities = 0;
-
-      state.game.currentGame = 1;
-      state.game.totalGames = state.config.gamesCount;
-      state.game.currentRole = 'Nord smuggle / Sud douane';
-
-      state.smuggle.team = 'north';
-      state.smuggle.amount = 0;
-      state.smuggle.prepared = false;
-
-      $('log').innerHTML = '';
-      $('winnerText').textContent = '';
-      $('northFinal').textContent = '0';
-      $('southFinal').textContent = '0';
-
-      updateUI();
-      log('Nouvelle partie lancée. ATM de départ : ' + state.config.startAtm + ', Pays neutre : ' + state.config.startThird + ', prêt : ' + state.config.loanAmount + ', jeux : ' + state.config.gamesCount, 'success');
-    }
-
-    function resetGame() {
-      state.game.currentGame = 0;
-      state.game.totalGames = 0;
-      state.game.currentRole = '–';
-      state.teams.north = { atm: 0, third: 0, indemnities: 0 };
-      state.teams.south = { atm: 0, third: 0, indemnities: 0 };
-      state.smuggle = { team: 'north', amount: 0, prepared: false };
-      $('log').innerHTML = '';
-      $('winnerText').textContent = '';
-      $('northFinal').textContent = '0';
-      $('southFinal').textContent = '0';
-      updateUI();
-      log('Partie réinitialisée.', 'warning');
-    }
-
-    function updateUI() {
-      $('northAtm').textContent = state.teams.north.atm;
-      $('southAtm').textContent = state.teams.south.atm;
-      $('northThird').textContent = state.teams.north.third;
-      $('southThird').textContent = state.teams.south.third;
-      $('northIndemnities').textContent = state.teams.north.indemnities;
-      $('southIndemnities').textContent = state.teams.south.indemnities;
-
-      $('currentGame').textContent = state.game.currentGame;
-      $('totalGames').textContent = state.game.totalGames;
-      $('currentRole').textContent = state.game.currentRole;
-
-      $('smugglerTeam').value = state.smuggle.team;
-      $('smugglerAmount').value = state.smuggle.amount;
-
-      $('smugglerInfo').textContent = state.smuggle.prepared
-        ? `Mallette prête : ${state.smuggle.amount} unités retirées de l’ATM du ${state.smuggle.team === 'north' ? 'Nord' : 'Sud'}.`
-        : 'Aucune mallette préparée pour ce tour.';
-
-      $('inspectorInfo').textContent = '';
-    }
-
-    function switchRoles() {
-      if (state.game.currentRole === 'Nord smuggle / Sud douane') {
-        state.game.currentRole = 'Sud smuggle / Nord douane';
-        state.smuggle.team = 'south';
+    if (state.mallette === 0) {
+      const indemnity = Math.floor(doubt / 2);
+      state.teams[state.smuggler].third += indemnity;
+      log("DOUTE raté : mallette vide → indemnité " + indemnity);
+    } else {
+      if (doubt >= state.mallette) {
+        state.teams[state.inspector].third += state.mallette;
+        log("DOUTE réussi : le douanier prend " + state.mallette);
       } else {
-        state.game.currentRole = 'Nord smuggle / Sud douane';
-        state.smuggle.team = 'north';
+        const indemnity = state.mallette - doubt;
+        state.teams[state.smuggler].third += state.mallette + indemnity;
+        log("DOUTE raté : smuggler gagne " + state.mallette + " + indemnité " + indemnity);
       }
-      state.smuggle.amount = 0;
-      state.smuggle.prepared = false;
-      updateUI();
-      log('Changement de rôles : ' + state.game.currentRole, 'warning');
     }
 
-    function nextGame() {
-      if (state.game.currentGame >= state.game.totalGames) {
-        log('La manche est terminée. Calcul des résultats...', 'warning');
-        computeFinalResults();
-        return;
-      }
-      state.game.currentGame += 1;
-      state.smuggle.amount = 0;
-      state.smuggle.prepared = false;
-      updateUI();
-      log('Passage au jeu ' + state.game.currentGame + ' / ' + state.game.totalGames);
+    state.mallette = 0;
+  }
+
+  function nextRound() {
+    state.round++;
+    if (state.round > state.config.rounds) {
+      log("FIN DE PARTIE !");
+      return;
     }
+    document.getElementById("roundNumber").textContent = state.round;
+    log("Nouvelle manche.");
+  }
+</script>
 
-    function prepareSmuggle() {
-      const team = $('smugglerTeam').value;
-      const amount = Math.max(0, Math.min(100, Number($('smugglerAmount').value || 0)));
-
-      if (amount === 0) {
-        log('Le smuggler prépare une mallette vide.', 'warning');
-      }
-
-      const teamObj = state.teams[team];
-      if (teamObj.atm < amount) {
-        log(`Impossible : l’ATM du ${team === 'north' ? 'Nord' : 'Sud'} n’a pas assez d’argent.`, 'warning');
-        return;
-      }
-
-      teamObj.atm -= amount;
-      state.smuggle.team = team;
-      state.smuggle.amount = amount;
-      state.smuggle.prepared = true;
-
-      updateUI();
-      log(`Smuggler du ${team === 'north' ? 'Nord' : 'Sud'} prépare une mallette avec ${amount} unités (retirées de l’ATM).`);
-    }
-
-    function inspectorPass() {
-      if (!state.smuggle.prepared) {
-        log('PASS : aucune mallette préparée, rien ne se passe.', 'warning');
-        return;
-      }
-
-      const smTeam = state.smuggle.team;
-      const smAmount = state.smuggle.amount;
-
-      if (smAmount > 0) {
-        state.teams[smTeam].third += smAmount;
-        log(`PASS : le douanier laisse passer ${smAmount} unités vers le Pays neutre pour le ${smTeam === 'north' ? 'Nord' : 'Sud'}.`, 'success');
-      } else {
-        log('PASS : le douanier pensait que c’était vide, et c’était bien vide. Rien ne change.');
-      }
-
-      state.smuggle.prepared = false;
-      state.smuggle.amount = 0;
-      updateUI();
-    }
-
-    function inspectorDoubt() {
-      if (!state.smuggle.prepared) {
-        log('DOUTE : aucune mallette préparée, le douanier se trompe complètement.', 'warning');
-        return;
-      }
-
-      const inspectorTeam = $('inspectorTeam').value;
-      const doubtAmount = Math.max(0, Math.min(100, Number($('doubtAmount').value || 0)));
-      const smTeam = state.smuggle.team;
-      const smAmount = state.smuggle.amount;
-
-      if (doubtAmount === 0) {
-        log('DOUTE avec montant 0 : ça n’a pas de sens, mais on considère que le douanier se trompe.', 'warning');
-      }
-
-      if (smAmount === 0) {
-        // Mallette vide -> indemnité à l’autre pays (la moitié du doute)
-        const indemnity = Math.floor(doubtAmount / 2);
-        const otherTeam = smTeam === 'north' ? 'south' : 'north';
-        state.teams[otherTeam].indemnities += indemnity;
-        state.teams[otherTeam].third += indemnity;
-        log(`DOUTE sur une mallette vide : indemnité de ${indemnity} unités vers le ${otherTeam === 'north' ? 'Nord' : 'Sud'}.`, 'success');
-      } else {
-        if (doubtAmount >= smAmount) {
-          // Douanier prend l’argent pour son pays
-          state.teams[inspectorTeam].third += smAmount;
-          log(`DOUTE réussi : le douanier du ${inspectorTeam === 'north' ? 'Nord' : 'Sud'} prend ${smAmount} unités pour son Pays neutre.`, 'success');
-        } else {
-          // Smuggler gagne tout + indemnité
-          const indemnity = smAmount - doubtAmount;
-          state.teams[smTeam].third += smAmount + indemnity;
-          state.teams[smTeam].indemnities += indemnity;
-          log(`DOUTE raté : le smuggler du ${smTeam === 'north' ? 'Nord' : 'Sud'} garde ${smAmount} unités + indemnité de ${indemnity}.`, 'success');
-        }
-      }
-
-      state.smuggle.prepared = false;
-      state.smuggle.amount = 0;
-      updateUI();
-    }
-
-    function computeFinalResults() {
-      // Tout argent restant dans l’ATM va à l’autre pays (simplifié)
-      const northGainFromSouthAtm = state.teams.south.atm;
-      const southGainFromNorthAtm = state.teams.north.atm;
-
-      state.teams.north.third += northGainFromSouthAtm;
-      state.teams.south.third += southGainFromNorthAtm;
-
-      log(`Fin de manche : l’ATM du Sud (${northGainFromSouthAtm}) va au Nord, l’ATM du Nord (${southGainFromNorthAtm}) va au Sud.`, 'warning');
-
-      // On considère que chaque équipe doit rembourser le prêt une fois
-      state.teams.north.third -= state.config.loanAmount;
-      state.teams.south.third -= state.config.loanAmount;
-
-      const northTotal = state.teams.north.third + state.teams.north.indemnities;
-      const southTotal = state.teams.south.third + state.teams.south.indemnities;
-
-      $('northFinal').textContent = northTotal;
-      $('southFinal').textContent = southTotal;
-
-      if (northTotal > southTotal) {
-        $('winnerText').textContent = 'Victoire du Pays Nord !';
-      } else if (southTotal > northTotal) {
-        $('winnerText').textContent = 'Victoire du Pays Sud !';
-      } else {
-        $('winnerText').textContent = 'Égalité parfaite entre Nord et Sud.';
-      }
-
-      log(`Résultat final – Nord : ${northTotal}, Sud : ${southTotal}.`, 'success');
-    }
-
-    // Events
-    $('btnStart').addEventListener('click', initGame);
-    $('btnReset').addEventListener('click', resetGame);
-    $('btnSwitchRoles').addEventListener('click', switchRoles);
-    $('btnNextGame').addEventListener('click', nextGame);
-    $('btnPrepareSmuggle').addEventListener('click', prepareSmuggle);
-    $('btnPass').addEventListener('click', inspectorPass);
-    $('btnDoubt').addEventListener('click', inspectorDoubt);
-
-    // Init UI
-    updateUI();
-  </script>
 </body>
 </html>
