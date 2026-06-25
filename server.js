@@ -1,363 +1,164 @@
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
+const io = new Server(server);
 
-const io = new Server(server, {
-    cors: {
-        origin: "*"
-    }
-});
-
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
 
 const lobbies = {};
 
-function generateCode() {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-    let code = "";
-
-    for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
-    }
-
-    return code;
+function codeGen() {
+  return Math.random().toString(36).substring(2,6).toUpperCase();
 }
 
-function getLobby(code) {
-    return lobbies[code];
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
 }
 
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-
-        const j = Math.floor(Math.random() * (i + 1));
-
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-
-    return array;
+function safeNumber(n){
+  n = Number(n);
+  if(isNaN(n)) return 0;
+  return Math.max(0, Math.min(100, n));
 }
 
-function assignTeams(lobby) {
+io.on("connection",(socket)=>{
 
-    const players = [...lobby.players];
+  socket.on("create",(name,cb)=>{
+    const code = codeGen();
+    lobbies[code]={
+      players:[{id:socket.id,name}],
+      game:null
+    };
+    socket.join(code);
+    cb(code);
+  });
 
-    shuffle(players);
+  socket.on("join",(code,name,cb)=>{
+    const l = lobbies[code];
+    if(!l) return cb(false);
 
-    lobby.teams = {
-        north: [],
-        south: []
+    l.players.push({id:socket.id,name});
+    socket.join(code);
+    io.to(code).emit("players",l.players);
+    cb(true);
+  });
+
+  socket.on("start",(code)=>{
+    const l = lobbies[code];
+    if(!l || l.players.length<2) return;
+
+    const p=[...l.players];
+    shuffle(p);
+
+    l.game={
+      phase:"smuggler",
+      smuggler:p[0].id,
+      customs:p[1].id,
+      suitcase:0,
+      declared:0,
+      history:[]
     };
 
-    players.forEach((player, index) => {
+    io.to(code).emit("state", publicState(l, socket.id));
+  });
 
-        if (index % 2 === 0) {
-            lobby.teams.north.push(player.id);
-            player.team = "north";
-        } else {
-            lobby.teams.south.push(player.id);
-            player.team = "south";
-        }
-    });
-}
+  socket.on("put",(code,val)=>{
+    const l=lobbies[code];
+    if(!l || !l.game) return;
+    if(socket.id!==l.game.smuggler) return;
+    if(l.game.phase!=="smuggler") return;
 
-function startGame(lobby) {
+    val=safeNumber(val);
+    l.game.suitcase=val;
+    l.game.phase="declare";
 
-    assignTeams(lobby);
+    io.to(code).emit("state", publicState(l));
+  });
 
-    lobby.game = {
-        round: 1,
-        maxRounds: 20,
-        phase: "smuggler",
+  socket.on("declare",(code,val)=>{
+    const l=lobbies[code];
+    if(!l||!l.game) return;
+    if(socket.id!==l.game.smuggler) return;
+    if(l.game.phase!=="declare") return;
 
-        northATM: 300,
-        southATM: 300,
+    val=safeNumber(val);
+    l.game.declared=val;
+    l.game.phase="customs";
 
-        northBank: 100,
-        southBank: 100,
+    io.to(code).emit("state", publicState(l));
+  });
 
-        suitcase: 0,
+  socket.on("choice",(code,doubt)=>{
+    const l=lobbies[code];
+    if(!l||!l.game) return;
+    if(socket.id!==l.game.customs) return;
+    if(l.game.phase!=="customs") return;
 
-        smuggler: null,
-        customs: null,
+    const real=l.game.suitcase;
+    const dec=l.game.declared;
 
-        doubt: 0
-    };
-
-    chooseRoles(lobby);
-}
-
-function chooseRoles(lobby) {
-
-    const northPlayers = lobby.players.filter(
-        p => p.team === "north"
-    );
-
-    const southPlayers = lobby.players.filter(
-        p => p.team === "south"
-    );
-
-    if (
-        northPlayers.length === 0 ||
-        southPlayers.length === 0
-    ) {
-        return;
+    let result;
+    if(doubt){
+      result = (real===dec) ? "customsLose" : "customsWin";
+    }else{
+      result = "smugglerWin";
     }
 
-    const smuggler =
-        northPlayers[
-            Math.floor(Math.random() * northPlayers.length)
-        ];
+    l.game.history.push({real,dec,result});
+    l.game.phase="result";
+    l.game.result=result;
+
+    io.to(code).emit("state", publicState(l));
+
+    setTimeout(()=>{
+      nextRound(l,code);
+    },3000);
+  });
+
+  socket.on("disconnect",()=>{
+    for(const code in lobbies){
+      const l=lobbies[code];
+      l.players=l.players.filter(p=>p.id!==socket.id);
+    }
+  });
 
-    const customs =
-        southPlayers[
-            Math.floor(Math.random() * southPlayers.length)
-        ];
-
-    lobby.game.smuggler = smuggler.id;
-    lobby.game.customs = customs.id;
-
-    lobby.game.suitcase = 0;
-    lobby.game.doubt = 0;
-    lobby.game.phase = "smuggler";
-
-    emitLobbyState(lobby);
-}
-
-function emitLobbyState(lobby) {
-
-    const publicState = {
-        code: lobby.code,
-        players: lobby.players.map(p => ({
-            id: p.id,
-            name: p.name,
-            team: p.team
-        })),
-        game: lobby.game
-    };
-
-    io.to(lobby.code).emit(
-        "lobbyState",
-        publicState
-    );
-}
-
-io.on("connection", socket => {
-
-    console.log("Connecté :", socket.id);
-
-    socket.on("createLobby", ({ name }) => {
-
-        let code;
-
-        do {
-            code = generateCode();
-        } while (lobbies[code]);
-
-        const lobby = {
-            code,
-            host: socket.id,
-            players: []
-        };
-
-        const player = {
-            id: socket.id,
-            name,
-            team: null
-        };
-
-        lobby.players.push(player);
-
-        lobbies[code] = lobby;
-
-        socket.join(code);
-
-        socket.emit("lobbyCreated", {
-            code
-        });
-
-        emitLobbyState(lobby);
-    });
-
-    socket.on("joinLobby", ({ code, name }) => {
-
-        code = code.toUpperCase();
-
-        const lobby = getLobby(code);
-
-        if (!lobby) {
-            socket.emit(
-                "errorMessage",
-                "Lobby introuvable"
-            );
-            return;
-        }
-
-        const player = {
-            id: socket.id,
-            name,
-            team: null
-        };
-
-        lobby.players.push(player);
-
-        socket.join(code);
-
-        emitLobbyState(lobby);
-    });
-
-    socket.on("startGame", ({ code }) => {
-
-        const lobby = getLobby(code);
-
-        if (!lobby) return;
-
-        if (socket.id !== lobby.host) return;
-
-        startGame(lobby);
-
-        emitLobbyState(lobby);
-    });
-
-    socket.on("putMoney", ({ code, amount }) => {
-
-        const lobby = getLobby(code);
-
-        if (!lobby) return;
-
-        if (
-            socket.id !== lobby.game.smuggler
-        ) return;
-
-        amount = Number(amount);
-
-        if (
-            isNaN(amount) ||
-            amount < 0 ||
-            amount > 100
-        ) {
-            return;
-        }
-
-        lobby.game.suitcase = amount;
-        lobby.game.phase = "customs";
-
-        emitLobbyState(lobby);
-    });
-
-    socket.on("customsPass", ({ code }) => {
-
-        const lobby = getLobby(code);
-
-        if (!lobby) return;
-
-        if (
-            socket.id !== lobby.game.customs
-        ) return;
-
-        const amount = lobby.game.suitcase;
-
-        lobby.game.northATM -= amount;
-        lobby.game.northBank += amount;
-
-        nextRound(lobby);
-    });
-
-    socket.on(
-        "customsDoubt",
-        ({ code, amount }) => {
-
-            const lobby = getLobby(code);
-
-            if (!lobby) return;
-
-            if (
-                socket.id !== lobby.game.customs
-            ) return;
-
-            amount = Number(amount);
-
-            const suitcase =
-                lobby.game.suitcase;
-
-            if (amount >= suitcase) {
-
-                lobby.game.southBank +=
-                    suitcase;
-
-            } else {
-
-                lobby.game.northBank +=
-                    suitcase;
-
-                lobby.game.northBank +=
-                    Math.floor(
-                        (suitcase - amount) / 2
-                    );
-            }
-
-            nextRound(lobby);
-        }
-    );
-
-    socket.on("disconnect", () => {
-
-        Object.values(lobbies).forEach(
-            lobby => {
-
-                lobby.players =
-                    lobby.players.filter(
-                        p => p.id !== socket.id
-                    );
-
-                if (
-                    lobby.players.length === 0
-                ) {
-                    delete lobbies[lobby.code];
-                } else {
-                    emitLobbyState(lobby);
-                }
-            }
-        );
-
-        console.log(
-            "Déconnecté :",
-            socket.id
-        );
-    });
 });
 
-function nextRound(lobby) {
+function nextRound(l,code){
+  const ids = l.players.map(p=>p.id);
+  shuffle(ids);
 
-    lobby.game.round++;
+  l.game={
+    phase:"smuggler",
+    smuggler:ids[0],
+    customs:ids[1],
+    suitcase:0,
+    declared:0,
+    history:l.game.history
+  };
 
-    if (
-        lobby.game.round >
-        lobby.game.maxRounds
-    ) {
-
-        lobby.game.phase = "finished";
-
-        emitLobbyState(lobby);
-
-        return;
-    }
-
-    chooseRoles(lobby);
+  io.to(code).emit("state", publicState(l));
 }
 
-const PORT =
-    process.env.PORT || 3000;
+function publicState(l){
+  return {
+    players:l.players,
+    game:{
+      phase:l.game.phase,
+      smuggler:l.game.smuggler,
+      customs:l.game.customs,
+      declared:l.game.declared,
+      history:l.game.history,
+      result:l.game.result
+    }
+  };
+}
 
-server.listen(PORT, () => {
-
-    console.log(
-        "Serveur lancé sur le port",
-        PORT
-    );
-});
+server.listen(3000,()=>console.log("running"));
