@@ -4,7 +4,6 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Sert tous les fichiers du dossier courant (index.html, images, css, js…)
 app.use(express.static(path.join(__dirname)));
 
 app.get("/", (req, res) => {
