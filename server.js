@@ -1,164 +1,315 @@
-
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server, {
+  cors: { origin: '*' }
+});
 
-app.use(express.static("public"));
+app.use(express.static('.'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-const lobbies = {};
+// ============= GAME STATE =============
+const games = {};
+const players = {};
 
-function codeGen() {
-  return Math.random().toString(36).substring(2,6).toUpperCase();
-}
+class GameRoom {
+  constructor(roomId, settings) {
+    this.roomId = roomId;
+    this.settings = {
+      maxPlayers: settings.maxPlayers || 4,
+      totalRounds: settings.totalRounds || 10,
+      maxTimePerTurn: settings.maxTimePerTurn || 120,
+      smuggleLimit: settings.smuggleLimit || 100,
+      startingATM: settings.startingATM || 300
+    };
+    
+    this.players = {};
+    this.status = 'lobby'; // lobby, teamSelection, roleSelection, playing, finished
+    this.currentRound = 0;
+    this.gameHistory = [];
+    this.teamA = [];
+    this.teamB = [];
+    this.currentSmugglerTeam = 'A'; // Which team is smuggling this round
+  }
 
-function shuffle(a){
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
+  addPlayer(playerId, name) {
+    this.players[playerId] = {
+      id: playerId,
+      name: name,
+      team: null,
+      role: null,
+      atm: this.settings.startingATM,
+      bank: 100,
+      totalSmuggled: 0,
+      totalIndemnity: 0,
+      collectedFromEnemies: 0
+    };
+    return this.players[playerId];
+  }
+
+  getGameState() {
+    return {
+      roomId: this.roomId,
+      status: this.status,
+      settings: this.settings,
+      currentRound: this.currentRound,
+      players: this.players,
+      teamA: this.teamA,
+      teamB: this.teamB,
+      currentSmugglerTeam: this.currentSmugglerTeam,
+      playerCount: Object.keys(this.players).length
+    };
+  }
+
+  getPlayerList() {
+    return Object.values(this.players).map(p => ({
+      id: p.id,
+      name: p.name,
+      team: p.team,
+      role: p.role,
+      atm: p.atm,
+      bank: p.bank
+    }));
+  }
+
+  setPlayerTeam(playerId, team) {
+    if (this.players[playerId]) {
+      this.players[playerId].team = team;
+      if (team === 'A') {
+        this.teamA.push(playerId);
+      } else {
+        this.teamB.push(playerId);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  setPlayerRole(playerId, role) {
+    if (this.players[playerId]) {
+      this.players[playerId].role = role;
+      return true;
+    }
+    return false;
+  }
+
+  processTurn(smugglerId, amount, inspectorDecision, doubtAmount) {
+    const smuggler = this.players[smugglerId];
+    if (!smuggler || amount > this.settings.smuggleLimit || amount > smuggler.atm) {
+      return { success: false, error: 'Invalid smuggle amount' };
+    }
+
+    // Withdraw from ATM
+    smuggler.atm -= amount;
+    
+    let result = {
+      success: true,
+      smuggler: smuggler.name,
+      amount: amount,
+      decision: inspectorDecision,
+      indemnity: 0,
+      finalAmount: amount
+    };
+
+    if (inspectorDecision === 'pass') {
+      // Smuggler gets the money to bank
+      smuggler.bank += amount;
+      smuggler.totalSmuggled += amount;
+      result.outcome = 'success';
+    } else if (inspectorDecision === 'doubt') {
+      // Inspector doubted
+      const inspectorTeam = smuggler.team === 'A' ? 'B' : 'A';
+      const inspectorPlayers = smuggler.team === 'A' ? this.teamB : this.teamA;
+
+      if (doubtAmount === 0) {
+        // Case was empty, inspector pays indemnity
+        const indemnity = 0; // No money, so no indemnity
+        result.outcome = 'empty_case';
+        result.indemnity = indemnity;
+      } else if (doubtAmount >= amount) {
+        // Inspector called correctly or over
+        result.outcome = 'caught';
+        result.finalAmount = doubtAmount;
+        
+        // Distribute caught money to all inspector team members
+        const amountPerInspector = Math.floor(doubtAmount / inspectorPlayers.length);
+        inspectorPlayers.forEach(inspectorId => {
+          if (this.players[inspectorId]) {
+            this.players[inspectorId].bank += amountPerInspector;
+            this.players[inspectorId].collectedFromEnemies += amountPerInspector;
+          }
+        });
+      } else {
+        // Smuggler has more than doubted amount
+        const indemnity = Math.floor((doubtAmount) / 2);
+        smuggler.bank += amount + indemnity;
+        smuggler.totalSmuggled += amount;
+        smuggler.totalIndemnity += indemnity;
+        result.outcome = 'escaped_with_indemnity';
+        result.indemnity = indemnity;
+        result.finalAmount = amount + indemnity;
+      }
+    }
+
+    this.gameHistory.push(result);
+    return result;
+  }
+
+  finishRound() {
+    // Remaining ATM money goes to opposing team
+    const teamARemaining = this.teamA.reduce((sum, pId) => sum + this.players[pId].atm, 0);
+    const teamBRemaining = this.teamB.reduce((sum, pId) => sum + this.players[pId].atm, 0);
+
+    // Distribute opponent's remaining money
+    this.teamA.forEach(pId => {
+      this.players[pId].bank += Math.floor(teamBRemaining / this.teamA.length);
+    });
+    
+    this.teamB.forEach(pId => {
+      this.players[pId].bank += Math.floor(teamARemaining / this.teamB.length);
+    });
+
+    // Reset ATMs for next round
+    this.teamA.forEach(pId => {
+      this.players[pId].atm = this.settings.startingATM;
+    });
+    
+    this.teamB.forEach(pId => {
+      this.players[pId].atm = this.settings.startingATM;
+    });
+
+    this.currentRound++;
+    this.currentSmugglerTeam = this.currentSmugglerTeam === 'A' ? 'B' : 'A';
+  }
+
+  getResults() {
+    const results = Object.values(this.players).map(p => ({
+      name: p.name,
+      team: p.team,
+      bank: p.bank,
+      atm: p.atm,
+      totalSmuggled: p.totalSmuggled,
+      totalIndemnity: p.totalIndemnity,
+      collectedFromEnemies: p.collectedFromEnemies,
+      totalScore: p.bank + p.atm
+    }));
+    
+    return results.sort((a, b) => b.totalScore - a.totalScore);
   }
 }
 
-function safeNumber(n){
-  n = Number(n);
-  if(isNaN(n)) return 0;
-  return Math.max(0, Math.min(100, n));
-}
+// ============= SOCKET EVENTS =============
+io.on('connection', (socket) => {
+  console.log('Player connected:', socket.id);
 
-io.on("connection",(socket)=>{
-
-  socket.on("create",(name,cb)=>{
-    const code = codeGen();
-    lobbies[code]={
-      players:[{id:socket.id,name}],
-      game:null
-    };
-    socket.join(code);
-    cb(code);
+  socket.on('createRoom', (data) => {
+    const roomId = Math.random().toString(36).substring(7);
+    const room = new GameRoom(roomId, data.settings || {});
+    games[roomId] = room;
+    
+    const player = room.addPlayer(socket.id, data.playerName);
+    players[socket.id] = { roomId, ...player };
+    
+    socket.join(roomId);
+    socket.emit('roomCreated', { roomId, gameState: room.getGameState() });
+    io.to(roomId).emit('gameStateUpdated', room.getGameState());
   });
 
-  socket.on("join",(code,name,cb)=>{
-    const l = lobbies[code];
-    if(!l) return cb(false);
-
-    l.players.push({id:socket.id,name});
-    socket.join(code);
-    io.to(code).emit("players",l.players);
-    cb(true);
-  });
-
-  socket.on("start",(code)=>{
-    const l = lobbies[code];
-    if(!l || l.players.length<2) return;
-
-    const p=[...l.players];
-    shuffle(p);
-
-    l.game={
-      phase:"smuggler",
-      smuggler:p[0].id,
-      customs:p[1].id,
-      suitcase:0,
-      declared:0,
-      history:[]
-    };
-
-    io.to(code).emit("state", publicState(l, socket.id));
-  });
-
-  socket.on("put",(code,val)=>{
-    const l=lobbies[code];
-    if(!l || !l.game) return;
-    if(socket.id!==l.game.smuggler) return;
-    if(l.game.phase!=="smuggler") return;
-
-    val=safeNumber(val);
-    l.game.suitcase=val;
-    l.game.phase="declare";
-
-    io.to(code).emit("state", publicState(l));
-  });
-
-  socket.on("declare",(code,val)=>{
-    const l=lobbies[code];
-    if(!l||!l.game) return;
-    if(socket.id!==l.game.smuggler) return;
-    if(l.game.phase!=="declare") return;
-
-    val=safeNumber(val);
-    l.game.declared=val;
-    l.game.phase="customs";
-
-    io.to(code).emit("state", publicState(l));
-  });
-
-  socket.on("choice",(code,doubt)=>{
-    const l=lobbies[code];
-    if(!l||!l.game) return;
-    if(socket.id!==l.game.customs) return;
-    if(l.game.phase!=="customs") return;
-
-    const real=l.game.suitcase;
-    const dec=l.game.declared;
-
-    let result;
-    if(doubt){
-      result = (real===dec) ? "customsLose" : "customsWin";
-    }else{
-      result = "smugglerWin";
+  socket.on('joinRoom', (data) => {
+    const { roomId, playerName } = data;
+    const room = games[roomId];
+    
+    if (!room) {
+      socket.emit('error', 'Room not found');
+      return;
+    }
+    
+    if (Object.keys(room.players).length >= room.settings.maxPlayers) {
+      socket.emit('error', 'Room is full');
+      return;
     }
 
-    l.game.history.push({real,dec,result});
-    l.game.phase="result";
-    l.game.result=result;
-
-    io.to(code).emit("state", publicState(l));
-
-    setTimeout(()=>{
-      nextRound(l,code);
-    },3000);
+    const player = room.addPlayer(socket.id, playerName);
+    players[socket.id] = { roomId, ...player };
+    socket.join(roomId);
+    
+    socket.emit('roomJoined', { roomId, gameState: room.getGameState() });
+    io.to(roomId).emit('gameStateUpdated', room.getGameState());
   });
 
-  socket.on("disconnect",()=>{
-    for(const code in lobbies){
-      const l=lobbies[code];
-      l.players=l.players.filter(p=>p.id!==socket.id);
+  socket.on('selectTeam', (data) => {
+    const { roomId, team } = data;
+    const room = games[roomId];
+    
+    if (!room) return;
+    room.setPlayerTeam(socket.id, team);
+    io.to(roomId).emit('gameStateUpdated', room.getGameState());
+  });
+
+  socket.on('selectRole', (data) => {
+    const { roomId, role } = data;
+    const room = games[roomId];
+    
+    if (!room) return;
+    room.setPlayerRole(socket.id, role);
+    io.to(roomId).emit('gameStateUpdated', room.getGameState());
+  });
+
+  socket.on('startGame', (roomId) => {
+    const room = games[roomId];
+    if (!room) return;
+    
+    room.status = 'playing';
+    room.currentRound = 1;
+    io.to(roomId).emit('gameStarted', room.getGameState());
+  });
+
+  socket.on('submitTurn', (data) => {
+    const { roomId, amount, decision, doubtAmount } = data;
+    const room = games[roomId];
+    
+    if (!room) return;
+    
+    const result = room.processTurn(socket.id, amount, decision, doubtAmount);
+    io.to(roomId).emit('turnProcessed', result);
+    io.to(roomId).emit('gameStateUpdated', room.getGameState());
+  });
+
+  socket.on('finishRound', (roomId) => {
+    const room = games[roomId];
+    if (!room) return;
+    
+    room.finishRound();
+    
+    if (room.currentRound > room.settings.totalRounds) {
+      room.status = 'finished';
+      const results = room.getResults();
+      io.to(roomId).emit('gameFinished', { results, finalState: room.getGameState() });
+    } else {
+      io.to(roomId).emit('roundFinished', room.getGameState());
     }
   });
 
+  socket.on('disconnect', () => {
+    const playerData = players[socket.id];
+    if (playerData) {
+      const room = games[playerData.roomId];
+      if (room) {
+        delete room.players[socket.id];
+        room.teamA = room.teamA.filter(id => id !== socket.id);
+        room.teamB = room.teamB.filter(id => id !== socket.id);
+        io.to(playerData.roomId).emit('gameStateUpdated', room.getGameState());
+      }
+    }
+    delete players[socket.id];
+  });
 });
 
-function nextRound(l,code){
-  const ids = l.players.map(p=>p.id);
-  shuffle(ids);
-
-  l.game={
-    phase:"smuggler",
-    smuggler:ids[0],
-    customs:ids[1],
-    suitcase:0,
-    declared:0,
-    history:l.game.history
-  };
-
-  io.to(code).emit("state", publicState(l));
-}
-
-function publicState(l){
-  return {
-    players:l.players,
-    game:{
-      phase:l.game.phase,
-      smuggler:l.game.smuggler,
-      customs:l.game.customs,
-      declared:l.game.declared,
-      history:l.game.history,
-      result:l.game.result
-    }
-  };
-}
-
-server.listen(3000,()=>console.log("running"));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
