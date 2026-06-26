@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎰 CONTRABAND - Le Jeu du Doute</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #e94560;
+            --success: #00d4ff;
+            --warning: #ffd60a;
+            --danger: #ff006e;
+            --teamA: #0096ff;
+            --teamB: #ff0066;
+            --text: #ffffff;
+            --bg-light: #f5f5f5;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ===== SCREENS ===== */
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== WELCOME SCREEN ===== */
+        #welcomeScreen {
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .welcome-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 60px 40px;
+            max-width: 600px;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .welcome-title {
+            font-size: 4em;
+            margin: 20px 0;
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.2em;
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+
+        .welcome-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #ff006e);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .btn-secondary:hover {
+            background: var(--success);
+            color: var(--primary);
+        }
+
+        .btn-team-a {
+            background: var(--teamA);
+            color: white;
+            flex: 1;
+            padding: 15px;
+        }
+
+        .btn-team-b {
+            background: var(--teamB);
+            color: white;
+            flex: 1;
+            padding: 15px;
+        }
+
+        .btn-role {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid currentColor;
+            color: var(--text);
+            flex: 1;
+            padding: 20px;
+            font-size: 1.1em;
+        }
+
+        .btn-role.smuggler {
+            border-color: var(--warning);
+        }
+
+        .btn-role.inspector {
+            border-color: var(--danger);
+        }
+
+        .btn-role:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ===== LOBBY CREATION ===== */
+        #lobbyScreen {
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .lobby-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--accent);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--success);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .setting-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .setting-item label {
+            margin-bottom: 8px;
+            font-size: 0.85em;
+            display: block;
+        }
+
+        .setting-item input {
+            width: 100%;
+        }
+
+        /* ===== TEAM/ROLE SELECTION ===== */
+        .selection-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            padding: 40px 20px;
+        }
+
+        .selection-title {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .team-options,
+        .role-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .team-card,
+        .role-card {
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+
+        .team-card {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .team-card.teamA {
+            border-color: var(--teamA);
+        }
+
+        .team-card.teamB {
+            border-color: var(--teamB);
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .role-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+
+        .role-card.smuggler {
+            border-color: var(--warning);
+        }
+
+        .role-card.inspector {
+            border-color: var(--danger);
+        }
+
+        /* ===== GAME ROOM ===== */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid var(--accent);
+        }
+
+        .round-info {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .player-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--accent);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .player-panel-title {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-stats {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 1.1em;
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: var(--success);
+        }
+
+        .stat-value.warning {
+            color: var(--warning);
+        }
+
+        /* ===== SMUGGLER INTERFACE ===== */
+        .briefcase-container {
+            background: linear-gradient(135deg, rgba(255, 215, 10, 0.1), rgba(255, 215, 10, 0.05));
+            border: 3px dashed var(--warning);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .briefcase-emoji {
+            font-size: 5em;
+            margin: 20px 0;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .smuggle-amount {
+            font-size: 2em;
+            color: var(--warning);
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .amount-input-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .amount-btn {
+            background: rgba(255, 215, 10, 0.2);
+            border: 2px solid var(--warning);
+            color: var(--warning);
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .amount-btn:hover {
+            background: var(--warning);
+            color: var(--primary);
+        }
+
+        .amount-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--success);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100px;
+        }
+
+        /* ===== INSPECTOR INTERFACE ===== */
+        .inspector-container {
+            background: linear-gradient(135deg, rgba(255, 0, 102, 0.1), rgba(255, 0, 102, 0.05));
+            border: 3px solid var(--danger);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .inspector-emoji {
+            font-size: 4em;
+            margin: 20px 0;
+        }
+
+        .decision-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-direction: column;
+        }
+
+        .btn-pass {
+            background: var(--success);
+            color: var(--primary);
+            padding: 15px;
+        }
+
+        .btn-doubt {
+            background: var(--danger);
+            color: white;
+            padding: 15px;
+        }
+
+        .doubt-input-group {
+            margin-top: 20px;
+        }
+
+        /* ===== RESULTS SCREEN ===== */
+        #resultsScreen {
+            padding: 40px 20px;
+        }
+
+        .results-title {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .podium {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .podium-item {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 2px solid var(--accent);
+            min-width: 150px;
+        }
+
+        .podium-rank {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .podium-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .podium-score {
+            font-size: 1.5em;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .results-table {
+            width: 100%;
+            margin-top: 40px;
+            border-collapse: collapse;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .results-table th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+
+        .results-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* ===== PLAYER LIST ===== */
+        .players-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .player-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .player-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            margin: 5px 2px;
+            font-weight: bold;
+        }
+
+        .badge-teamA {
+            background: var(--teamA);
+            color: white;
+        }
+
+        .badge-teamB {
+            background: var(--teamB);
+            color: white;
+        }
+
+        .badge-smuggler {
+            background: var(--warning);
+            color: var(--primary);
+        }
+
+        .badge-inspector {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* ===== NOTIFICATIONS ===== */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid var(--accent);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            animation: slideInRight 0.5s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .loader {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .team-options,
+            .role-options {
+                grid-template-columns: 1fr;
+            }
+
+            .welcome-title {
+                font-size: 2.5em;
+            }
+
+            .players-list {
+                grid-template-columns: 1fr;
+            }
+
+            .game-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- WELCOME SCREEN -->
+        <div id="welcomeScreen" class="screen active">
+            <div class="welcome-box">
+                <div class="welcome-title">🎰 CONTRABAND</div>
+                <div class="welcome-subtitle">Le jeu du doute et du bluff</div>
+                <p style="color: #aaa; margin-bottom: 30px; font-size: 0.95em;">
+                    Sois smuggleur ou douanier. Transporte l'argent, ou empêche-le de passer.<br>
+                    Qui gagnera le duel du bluff ? 💰
+                </p>
+                <div class="welcome-buttons">
+                    <button class="btn btn-primary" onclick="showCreateLobby()">
+                        📝 CRÉER UNE PARTIE
+                    </button>
+                    <button class="btn btn-secondary" onclick="showJoinLobby()">
+                        🔗 REJOINDRE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOBBY SCREEN -->
+        <div id="lobbyScreen" class="screen">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h1 style="flex: 1;">🎮 Configuration de Partie</h1>
+                <button class="btn btn-secondary" onclick="backToWelcome()">← Accueil</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <!-- CREATE LOBBY -->
+                <div id="createLobbyContainer" style="display: none;">
+                    <div class="lobby-box">
+                        <h2 style="margin-bottom: 20px; color: var(--accent);">➕ Créer une Partie</h2>
+                        
+                        <div class="form-group">
+                            <label>👤 Ton Nom</label>
+                            <input type="text" id="playerNameCreate" placeholder="Donne ton nom..." maxlength="20">
+                        </div>
+
+                        <h3 style="margin-top: 30px; margin-bottom: 15px; color: var(--success);">⚙️ Paramètres</h3>
+
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>Joueurs</label>
+                                <input type="number" id="maxPlayers" min="2" max="10" value="4">
+                            </div>
+                            <div class="setting-item">
+                                <label>Manches</label>
+                                <input type="number" id="totalRounds" min="1" max="50" value="10">
+                            </div>
+                            <div class="setting-item">
+                                <label>Limite de Transport</label>
+                                <input type="number" id="smuggleLimit" min="10" max="300" value="100">
+                            </div>
+                            <div class="setting-item">
+                                <label>Argent de Départ</label>
+                                <input type="number" id="startingATM" min="100" max="500" value="300">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 30px;" onclick="createRoom()">
+                            🚀 CRÉER LA PARTIE
+                        </button>
+                    </div>
+                </div>
+
+                <!-- JOIN LOBBY -->
+                <div id="joinLobbyContainer" style="display: none;">
+                    <div class="lobby-box">
+                        <h2 style="margin-bottom: 20px; color: var(--accent);">🔗 Rejoindre une Partie</h2>
+                        
+                        <div class="form-group">
+                            <label>👤 Ton Nom</label>
+                            <input type="text" id="playerNameJoin" placeholder="Donne ton nom..." maxlength="20">
+                        </div>
+
+                        <div class="form-group">
+                            <label>🎲 Code de la Partie</label>
+                            <input type="text" id="roomIdInput" placeholder="ex: abc123def..." maxlength="10">
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 30px;" onclick="joinRoom()">
+                            ✅ REJOINDRE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEAM SELECTION SCREEN -->
+        <div id="teamSelectionScreen" class="screen">
+            <div class="selection-container">
+                <div class="selection-title">🌍 Choisis ton Équipe</div>
+                
+                <div class="team-options">
+                    <div class="team-card teamA" onclick="selectTeam('A')">
+                        <div style="font-size: 3em; margin-bottom: 10px;">🔵</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">ÉQUIPE A</div>
+                        <div style="color: #aaa; margin-top: 10px;">Pays du Nord</div>
+                    </div>
+                    <div class="team-card teamB" onclick="selectTeam('B')">
+                        <div style="font-size: 3em; margin-bottom: 10px;">🔴</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">ÉQUIPE B</div>
+                        <div style="color: #aaa; margin-top: 10px;">Pays du Sud</div>
+                    </div>
+                </div>
+
+                <div class="players-list" id="waitingPlayersList">
+                    <div class="loader">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 10px;">En attente des autres joueurs...</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="copyRoomCode()">
+                        📋 Copier le Code de la Partie
+                    </button>
+                    <p style="color: #aaa; margin-top: 10px; font-size: 0.9em;" id="roomCodeDisplay"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROLE SELECTION SCREEN -->
+        <div id="roleSelectionScreen" class="screen">
+            <div class="selection-container">
+                <div class="selection-title">🎭 Choisis ton Rôle</div>
+                
+                <div class="role-options">
+                    <div class="role-card smuggler" onclick="selectRole('smuggler')">
+                        <div style="font-size: 3em; margin-bottom: 10px;">💼</div>
+                        <div style="font-size: 1.3em; font-weight: bold;">SMUGGLEUR</div>
+                        <div style="color: #aaa; margin-top: 10px; font-size: 0.9em;">
+                            Transporte l'argent<br>sans te faire prendre
+                        </div>
+                    </div>
+                    <div class="role-card inspector" onclick="selectRole('inspector')">
+                        <div style="font-size: 3em; margin-bottom: 10px;">🚨</div>
+                        <div style="font-size: 1.3em; font-weight: bold;">DOUANIER</div>
+                        <div style="color: #aaa; margin-top: 10px; font-size: 0.9em;">
+                            Détecte et bloque<br>les contrebandiers
+                        </div>
+                    </div>
+                </div>
+
+                <div class="players-list" id="roleSelectionPlayersList">
+                    <div class="loader">
+                        <div class="spinner"></div>
+                        <p style="margin-top: 10px;">En attente des rôles...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME ROOM SCREEN -->
+        <div id="gameRoomScreen" class="screen">
+            <div class="game-header">
+                <div class="round-info">📊 Manche <span id="roundNumber">1</span> / <span id="totalRoundsDisplay">10</span></div>
+                <div style="text-align: center; flex: 1;">
+                    <div style="font-size: 1.5em; margin-bottom: 10px;">🎰 CONTRABAND</div>
+                    <div id="currentSmugglerInfo" style="font-size: 0.9em; color: var(--warning);">
+                        Équipe Bleue est en contrebande
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="leaveGame()">← Quitter</button>
+            </div>
+
+            <div class="game-layout">
+                <!-- LEFT: PLAYER STATS -->
+                <div>
+                    <div class="player-panel">
+                        <div class="player-panel-title">
+                            👤 Mes Statistiques
+                        </div>
+                        <div class="player-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">Nom:</span>
+                                <span class="stat-value" id="myName">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Équipe:</span>
+                                <span class="stat-value" id="myTeam">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Rôle:</span>
+                                <span class="stat-value" id="myRole">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">💰 ATM (Mon Pays):</span>
+                                <span class="stat-value" id="myATM">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">🏦 Banque (Neutre):</span>
+                                <span class="stat-value" id="myBank">100</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">✈️ Transport Total:</span>
+                                <span class="stat-value warning" id="mySmuggled">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="player-panel" style="margin-top: 20px;">
+                        <div class="player-panel-title">👥 Équipes</div>
+                        <div style="margin-top: 15px;">
+                            <div style="margin-bottom: 15px;">
+                                <div style="color: var(--teamA); font-weight: bold; margin-bottom: 8px;">🔵 Équipe A</div>
+                                <div id="teamAList" style="font-size: 0.9em;"></div>
+                            </div>
+                            <div>
+                                <div style="color: var(--teamB); font-weight: bold; margin-bottom: 8px;">🔴 Équipe B</div>
+                                <div id="teamBList" style="font-size: 0.9em;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: GAME INTERFACE -->
+                <div id="gameInterface">
+                    <div class="player-panel">
+                        <div class="loader" id="loadingGame">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 10px;">Préparation du jeu...</p>
+                        </div>
+                        <div id="smugglerInterface" style="display: none;">
+                            <div class="player-panel-title">💼 Mode Smuggleur</div>
+                            <div class="briefcase-container">
+                                <div style="color: #aaa; font-size: 0.9em;">Combien veux-tu transporter ?</div>
+                                <div class="briefcase-emoji">💼</div>
+                                <div class="smuggle-amount" id="displayAmount">0</div>
+                                <div style="color: var(--success); font-size: 0.85em; margin: 10px 0;">
+                                    Max: <span id="maxSmuggles">100</span> | ATM: <span id="atmAmount">300</span>
+                                </div>
+                            </div>
+
+                            <div class="amount-input-group">
+                                <button class="amount-btn" onclick="setAmount(25)">+25</button>
+                                <button class="amount-btn" onclick="setAmount(50)">+50</button>
+                                <button class="amount-btn" onclick="setAmount(100)">+100</button>
+                                <input type="number" id="customAmount" class="amount-input" min="0" max="100" placeholder="Custom">
+                            </div>
+
+                            <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="submitSmugglerAmount()">
+                                ✅ CONFIRMER LE MONTANT
+                            </button>
+                        </div>
+
+                        <div id="inspectorInterface" style="display: none;">
+                            <div class="player-panel-title">🚨 Mode Douanier</div>
+                            <div class="inspector-container">
+                                <div style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">
+                                    Le smuggleur a sa valise...<br>Fais-tu confiance ? 🤔
+                                </div>
+                                <div class="inspector-emoji">🕵️</div>
+                                <div style="margin-top: 20px;">
+                                    <div style="color: #aaa; font-size: 0.9em; margin: 20px 0;">Choisis ta décision:</div>
+                                    <div class="decision-buttons">
+                                        <button class="btn btn-pass" onclick="submitInspectorDecision('pass')">
+                                            ✅ LAISSER PASSER
+                                        </button>
+                                        <button class="btn btn-doubt" onclick="showDoubtInput()">
+                                            ❌ DOUTER DU MONTANT
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="doubtInputDiv" style="display: none; margin-top: 20px;">
+                                    <div class="doubt-input-group">
+                                        <label style="color: #aaa; font-size: 0.9em; margin-bottom: 10px; display: block;">
+                                            Quel montant as-tu vu (selon toi) ?
+                                        </label>
+                                        <input type="number" id="doubtAmount" class="amount-input" min="0" max="100" style="width: 100%;" placeholder="0 à 100">
+                                        <button class="btn btn-doubt" style="width: 100%; margin-top: 10px;" onclick="submitInspectorDecision('doubt')">
+                                            🎯 ACCUSER
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="waitingInterface" style="display: none; text-align: center;">
+                            <div class="loader">
+                                <div class="spinner"></div>
+                                <p style="margin-top: 10px;">Les rôles sont assignés...<br>Attends l'action du joueur...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="player-panel" style="margin-top: 20px;">
+                        <div class="player-panel-title">📜 Historique de la Manche</div>
+                        <div id="roundHistory" style="max-height: 300px; overflow-y: auto; font-size: 0.9em;">
+                            <p style="color: #aaa; text-align: center; padding: 20px;">
+                                En attente d'actions...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULTS SCREEN -->
+        <div id="resultsScreen" class="screen">
+            <div class="results-title">🏆 FIN DE PARTIE - RÉSULTATS</div>
+
+            <div class="podium" id="podiumContainer">
+                <div class="loader">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <table class="results-table" id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>🏅 Rang</th>
+                        <th>👤 Joueur</th>
+                        <th>🌍 Équipe</th>
+                        <th>💰 Score Total</th>
+                        <th>✈️ Transport</th>
+                        <th>🎁 Indemnités</th>
+                        <th>🎯 Captures</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTableBody">
+                </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <button class="btn btn-primary" onclick="backToWelcome()">
+                    🏠 RETOUR À L'ACCUEIL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============= SOCKET.IO CONNECTION =============
+        const socket = io();
+        let currentPlayer = null;
+        let currentRoom = null;
+        let gameState = null;
+        let currentAmount = 0;
+
+        // ============= NAVIGATION =============
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function backToWelcome() {
+            showScreen('welcomeScreen');
+        }
+
+        function showCreateLobby() {
+            document.getElementById('createLobbyContainer').style.display = 'block';
+            document.getElementById('joinLobbyContainer').style.display = 'none';
+            showScreen('lobbyScreen');
+        }
+
+        function showJoinLobby() {
+            document.getElementById('joinLobbyContainer').style.display = 'block';
+            document.getElementById('createLobbyContainer').style.display = 'none';
+            showScreen('lobbyScreen');
+        }
+
+        // ============= LOBBY FUNCTIONS =============
+        function createRoom() {
+            const name = document.getElementById('playerNameCreate').value.trim();
+            if (!name) {
+                showNotification('❌ Entre ton nom !', 'error');
+                return;
+            }
+
+            const settings = {
+                maxPlayers: parseInt(document.getElementById('maxPlayers').value),
+                totalRounds: parseInt(document.getElementById('totalRounds').value),
+                smuggleLimit: parseInt(document.getElementById('smuggleLimit').value),
+                startingATM: parseInt(document.getElementById('startingATM').value)
+            };
+
+            socket.emit('createRoom', { playerName: name, settings });
+        }
+
+        function joinRoom() {
+            const name = document.getElementById('playerNameJoin').value.trim();
+            const roomId = document.getElementById('roomIdInput').value.trim();
+
+            if (!name || !roomId) {
+                showNotification('❌ Complète les champs !', 'error');
+                return;
+            }
+
+            socket.emit('joinRoom', { playerName: name, roomId });
+        }
+
+        function copyRoomCode() {
+            const code = document.getElementById('roomCodeDisplay').textContent.split(': ')[1];
+            if (code) {
+                navigator.clipboard.writeText(code);
+                showNotification('✅ Code copié !', 'success');
+            }
+        }
+
+        // ============= TEAM & ROLE SELECTION =============
+        function selectTeam(team) {
+            if (!currentRoom) return;
+            socket.emit('selectTeam', { roomId: currentRoom, team });
+        }
+
+        function selectRole(role) {
+            if (!currentRoom) return;
+            socket.emit('selectRole', { roomId: currentRoom, role });
+        }
+
+        function updateTeamSelection() {
+            if (!gameState) return;
+
+            const teamAPlayers = gameState.teamA
+                .map(id => gameState.players[id])
+                .filter(p => p);
+            const teamBPlayers = gameState.teamB
+                .map(id => gameState.players[id])
+                .filter(p => p);
+
+            document.getElementById('teamAList').innerHTML = teamAPlayers
+                .map(p => `<div>• ${p.name}</div>`)
+                .join('');
+
+            document.getElementById('teamBList').innerHTML = teamBPlayers
+                .map(p => `<div>• ${p.name}</div>`)
+                .join('');
+
+            document.getElementById('roomCodeDisplay').textContent = `Code: ${gameState.roomId}`;
+
+            let html = '';
+            gameState.teamA.forEach(id => {
+                const p = gameState.players[id];
+                if (p) {
+                    html += `<div class="player-card">
+                        <div class="player-name">${p.name}</div>
+                        <span class="player-badge badge-teamA">Équipe A</span>
+                        ${p.role ? `<span class="player-badge ${p.role === 'smuggler' ? 'badge-smuggler' : 'badge-inspector'}">${p.role === 'smuggler' ? '💼 Smuggleur' : '🚨 Douanier'}</span>` : ''}
+                    </div>`;
+                }
+            });
+            gameState.teamB.forEach(id => {
+                const p = gameState.players[id];
+                if (p) {
+                    html += `<div class="player-card">
+                        <div class="player-name">${p.name}</div>
+                        <span class="player-badge badge-teamB">Équipe B</span>
+                        ${p.role ? `<span class="player-badge ${p.role === 'smuggler' ? 'badge-smuggler' : 'badge-inspector'}">${p.role === 'smuggler' ? '💼 Smuggleur' : '🚨 Douanier'}</span>` : ''}
+                    </div>`;
+                }
+            });
+
+            document.getElementById('waitingPlayersList').innerHTML = html || '<p style="text-align: center; color: #aaa;">En attente...</p>';
+            document.getElementById('roleSelectionPlayersList').innerHTML = html || '<p style="text-align: center; color: #aaa;">En attente...</p>';
+        }
+
+        // ============= GAME LOGIC =============
+        function setAmount(amount) {
+            if (!gameState || !currentPlayer) return;
+            const maxAmount = Math.min(
+                gameState.settings.smuggleLimit,
+                gameState.players[currentPlayer.id].atm
+            );
+            currentAmount = Math.min(amount, maxAmount);
+            document.getElementById('displayAmount').textContent = currentAmount;
+        }
+
+        function submitSmugglerAmount() {
+            if (currentAmount === 0) {
+                showNotification('⚠️ Indique un montant !', 'warning');
+                return;
+            }
+            socket.emit('submitTurn', { roomId: currentRoom, amount: currentAmount, decision: null, doubtAmount: null });
+        }
+
+        function showDoubtInput() {
+            document.getElementById('doubtInputDiv').style.display = 'block';
+        }
+
+        function submitInspectorDecision(decision) {
+            let doubtAmount = 0;
+            if (decision === 'doubt') {
+                doubtAmount = parseInt(document.getElementById('doubtAmount').value) || 0;
+                if (doubtAmount < 0 || doubtAmount > 100) {
+                    showNotification('⚠️ Montant invalide !', 'warning');
+                    return;
+                }
+            }
+            socket.emit('submitTurn', { roomId: currentRoom, amount: null, decision, doubtAmount });
+        }
+
+        function updateGameDisplay() {
+            if (!gameState || !currentPlayer) return;
+
+            const player = gameState.players[currentPlayer.id];
+            if (!player) return;
+
+            document.getElementById('roundNumber').textContent = gameState.currentRound;
+            document.getElementById('totalRoundsDisplay').textContent = gameState.settings.totalRounds;
+
+            const teamName = player.team === 'A' ? 'Équipe A 🔵' : 'Équipe B 🔴';
+            document.getElementById('myName').textContent = player.name;
+            document.getElementById('myTeam').textContent = teamName;
+            document.getElementById('myRole').textContent = player.role ? (player.role === 'smuggler' ? '💼 Smuggleur' : '🚨 Douanier') : '⏳ En attente';
+            document.getElementById('myATM').textContent = player.atm;
+            document.getElementById('myBank').textContent = player.bank;
+            document.getElementById('mySmuggled').textContent = player.totalSmuggled;
+
+            const smugglingTeam = gameState.currentSmugglerTeam === 'A' ? 'Équipe Bleue 🔵' : 'Équipe Rose 🔴';
+            document.getElementById('currentSmugglerInfo').textContent = `${smugglingTeam} en contrebande`;
+
+            // Update max smuggle display
+            const maxSmuggles = Math.min(gameState.settings.smuggleLimit, player.atm);
+            document.getElementById('maxSmuggles').textContent = gameState.settings.smuggleLimit;
+            document.getElementById('atmAmount').textContent = player.atm;
+
+            updateTeamSelection();
+
+            // Show appropriate interface
+            if (gameState.status === 'playing') {
+                document.getElementById('loadingGame').style.display = 'none';
+
+                const isSmugglingTeam = player.team === gameState.currentSmugglerTeam;
+                const isSmugglerRole = player.role === 'smuggler';
+                const isInspectorRole = player.role === 'inspector';
+
+                if (isSmugglingTeam && isSmugglerRole) {
+                    document.getElementById('smugglerInterface').style.display = 'block';
+                    document.getElementById('inspectorInterface').style.display = 'none';
+                    document.getElementById('waitingInterface').style.display = 'none';
+                    document.getElementById('displayAmount').textContent = '0';
+                    currentAmount = 0;
+                    document.getElementById('doubtInputDiv').style.display = 'none';
+                } else if (!isSmugglingTeam && isInspectorRole) {
+                    document.getElementById('smugglerInterface').style.display = 'none';
+                    document.getElementById('inspectorInterface').style.display = 'block';
+                    document.getElementById('waitingInterface').style.display = 'none';
+                    document.getElementById('doubtInputDiv').style.display = 'none';
+                    document.getElementById('doubtAmount').value = '50';
+                } else {
+                    document.getElementById('smugglerInterface').style.display = 'none';
+                    document.getElementById('inspectorInterface').style.display = 'none';
+                    document.getElementById('waitingInterface').style.display = 'block';
+                }
+            }
+        }
+
+        function leaveGame() {
+            socket.disconnect();
+            backToWelcome();
+            location.reload();
+        }
+
+        // ============= NOTIFICATIONS =============
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // ============= SOCKET LISTENERS =============
+        socket.on('roomCreated', (data) => {
+            currentRoom = data.roomId;
+            gameState = data.gameState;
+            currentPlayer = gameState.players[socket.id];
+            showScreen('teamSelectionScreen');
+            updateTeamSelection();
+        });
+
+        socket.on('roomJoined', (data) => {
+            currentRoom = data.roomId;
+            gameState = data.gameState;
+            currentPlayer = gameState.players[socket.id];
+            showScreen('teamSelectionScreen');
+            updateTeamSelection();
+        });
+
+        socket.on('gameStateUpdated', (data) => {
+            gameState = data;
+            currentPlayer = gameState.players[socket.id];
+
+            if (gameState.status === 'playing') {
+                showScreen('gameRoomScreen');
+            }
+
+            updateTeamSelection();
+            updateGameDisplay();
+        });
+
+        socket.on('gameStarted', (data) => {
+            gameState = data;
+            currentPlayer = gameState.players[socket.id];
+            showScreen('gameRoomScreen');
+            updateGameDisplay();
+            showNotification('🎮 Le jeu commence !', 'success');
+        });
+
+        socket.on('turnProcessed', (result) => {
+            let message = '';
+            if (result.outcome === 'success') {
+                message = `✈️ ${result.smuggler} a passé ! +${result.amount}`;
+            } else if (result.outcome === 'caught') {
+                message = `🚨 Pris ! Doute confirmé à ${result.finalAmount}`;
+            } else if (result.outcome === 'escaped_with_indemnity') {
+                message = `💰 ${result.smuggler} a échappé ! +${result.finalAmount} (${result.indemnity} d'indemnité)`;
+            }
+            showNotification(message, 'info');
+
+            if (result.success) {
+                updateGameDisplay();
+            }
+        });
+
+        socket.on('gameFinished', (data) => {
+            const results = data.results;
+            showResults(results);
+        });
+
+        socket.on('error', (message) => {
+            showNotification(message, 'error');
+        });
+
+        // ============= RESULTS =============
+        function showResults(results) {
+            showScreen('resultsScreen');
+
+            const podium = results.slice(0, 3);
+            let podiumHtml = '';
+            const emojis = ['🥇', '🥈', '🥉'];
+
+            podium.forEach((result, index) => {
+                podiumHtml += `
+                    <div class="podium-item">
+                        <div class="podium-rank">${emojis[index]}</div>
+                        <div class="podium-name">${result.name}</div>
+                        <div class="podium-score">${result.totalScore}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('podiumContainer').innerHTML = podiumHtml || '<p style="color: #aaa;">Aucun résultat</p>';
+
+            let tableHtml = '';
+            results.forEach((result, index) => {
+                tableHtml += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${result.name}</td>
+                        <td>${result.team === 'A' ? '🔵 Équipe A' : '🔴 Équipe B'}</td>
+                        <td><strong>${result.totalScore}</strong></td>
+                        <td>${result.totalSmuggled}</td>
+                        <td>${result.totalIndemnity}</td>
+                        <td>${result.collectedFromEnemies}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('resultsTableBody').innerHTML = tableHtml;
+        }
+
+        // Initial screen
+        showScreen('welcomeScreen');
+    </script>
+</body>
+</html>
