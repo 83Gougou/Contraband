@@ -910,11 +910,27 @@
         </div>
     </div>
 
+    <!-- TURN RESULT MODAL -->
+    <div id="turnResultModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center;">
+        <div style="background: linear-gradient(135deg, rgba(26,26,46,0.98), rgba(22,33,62,0.98)); border: 3px solid #e94560; border-radius: 20px; padding: 40px; max-width: 500px; text-align: center; animation: slideUp 0.5s ease-out;">
+            <div style="font-size: 3em; margin-bottom: 20px;" id="resultEmoji">✨</div>
+            <div style="font-size: 1.8em; font-weight: bold; margin-bottom: 15px; background: linear-gradient(135deg, #00d4ff, #e94560); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;" id="resultTitle">Résultat</div>
+            <div id="resultDetails" style="color: #aaa; margin: 20px 0; font-size: 1.1em;"></div>
+            <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: left;">
+                <div id="resultStats" style="color: #aaa;"></div>
+            </div>
+            <button class="btn btn-primary" id="nextTurnBtn" style="width: 100%; margin-top: 20px; padding: 15px;" onclick="goNextTurn()">
+                ➡️ TOUR SUIVANT
+            </button>
+        </div>
+    </div>
+
     <script>
         const socket = io();
         let gameState = null;
         let currentRoom = null;
         let currentAmount = 0;
+        let lastTurnResult = null;
 
         // === NAVIGATION ===
         function showScreen(id) {
@@ -1136,7 +1152,7 @@
             socket.emit('submitInspectorDecision', { roomId: currentRoom, decision: 'pass', doubtAmount: 0 });
             document.getElementById('inspectorUI').style.display = 'none';
             document.getElementById('waitingUI').style.display = 'block';
-            document.getElementById('turnStatus').textContent = '⏳ TOUR EN COURS';
+            document.getElementById('turnStatus').textContent = '⏳ RÉSULTAT EN COURS';
         }
 
         function submitInspectorDoubt() {
@@ -1172,6 +1188,9 @@
                 updateTeamSelection();
             } else if (gameState.status === 'playing') {
                 updateGameDisplay();
+            } else if (gameState.status === 'finished') {
+                const results = gameState.results;
+                if (results) showResults(results);
             }
         });
 
@@ -1184,9 +1203,8 @@
 
         socket.on('turnCompleted', (result) => {
             if (result) {
-                notify(result.message);
+                showTurnResult(result);
             }
-            updateGameDisplay();
         });
 
         socket.on('gameFinished', (data) => {
@@ -1201,6 +1219,44 @@
         socket.on('error', (message) => {
             notify('❌ ' + message);
         });
+
+        // === TURN RESULT ===
+        function showTurnResult(result) {
+            if (!result) return;
+            lastTurnResult = result;
+
+            let emoji = '✨';
+            let title = 'Résultat';
+            let details = result.message;
+            let stats = '';
+
+            if (result.outcome === 'passed') {
+                emoji = '✈️';
+                title = 'PASSÉ!';
+                stats = `<div><span style="color: var(--success);">${result.smugglerName}</span> a transport ${result.amount}</div>`;
+            } else if (result.outcome === 'caught') {
+                emoji = '🚨';
+                title = 'ATTRAPÉ!';
+                stats = `<div><span style="color: var(--danger);">${result.inspectorName}</span> a pris ${result.amount}</div>`;
+            } else if (result.outcome === 'escaped') {
+                emoji = '💰';
+                title = 'ÉCHAPPÉ!';
+                stats = `<div><span style="color: var(--warning);">${result.smugglerName}</span></div>
+                         <div style="margin-top: 10px;">Transport: ${result.amount}</div>
+                         <div>Indemnité: ${result.indemnity}</div>`;
+            }
+
+            document.getElementById('resultEmoji').textContent = emoji;
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultDetails').textContent = details;
+            document.getElementById('resultStats').innerHTML = stats;
+            document.getElementById('turnResultModal').style.display = 'flex';
+        }
+
+        function goNextTurn() {
+            document.getElementById('turnResultModal').style.display = 'none';
+            socket.emit('nextTurn', currentRoom);
+        }
 
         // === RESULTS ===
         function showResults(results) {
