@@ -34,6 +34,8 @@ class GameRoom {
     this.teamB = [];
     this.currentSmugglerTeam = 'A';
     this.currentTurnData = null;
+    this.smugglerIndex = 0; // Track position in team for rotation
+    this.inspectorIndex = 0;
   }
 
   addPlayer(playerId, name) {
@@ -102,8 +104,13 @@ class GameRoom {
     const smugglingTeam = this.currentSmugglerTeam === 'A' ? this.teamA : this.teamB;
     const inspectingTeam = this.currentSmugglerTeam === 'A' ? this.teamB : this.teamA;
     
-    const smuggler = smugglingTeam[Math.floor(Math.random() * smugglingTeam.length)];
-    const inspector = inspectingTeam[Math.floor(Math.random() * inspectingTeam.length)];
+    // Rotate through smugglers
+    const smuggler = smugglingTeam[this.smugglerIndex % smugglingTeam.length];
+    this.smugglerIndex++;
+    
+    // Rotate through inspectors
+    const inspector = inspectingTeam[this.inspectorIndex % inspectingTeam.length];
+    this.inspectorIndex++;
     
     this.currentTurnData = {
       smugglerId: smuggler,
@@ -121,6 +128,10 @@ class GameRoom {
       return { success: false, error: 'Not your turn' };
     }
 
+    if (this.currentTurnData.smugglerSubmitted) {
+      return { success: false, error: 'Already submitted' };
+    }
+
     const smuggler = this.players[playerId];
     if (!smuggler || amount < 0 || amount > this.settings.smuggleLimit || amount > smuggler.atm) {
       return { success: false, error: 'Invalid amount' };
@@ -134,6 +145,10 @@ class GameRoom {
   submitInspectorDecision(playerId, decision, doubtAmount) {
     if (!this.currentTurnData || this.currentTurnData.inspectorId !== playerId) {
       return { success: false, error: 'Not your turn' };
+    }
+
+    if (this.currentTurnData.inspectorSubmitted) {
+      return { success: false, error: 'Already submitted' };
     }
 
     if (decision === 'doubt') {
@@ -210,7 +225,13 @@ class GameRoom {
       return false;
     }
 
+    // Switch which team is smuggling
     this.currentSmugglerTeam = this.currentSmugglerTeam === 'A' ? 'B' : 'A';
+    
+    // Reset indices when switching teams (so we start fresh with new team)
+    this.smugglerIndex = 0;
+    this.inspectorIndex = 0;
+    
     this.selectCurrentTurn();
     return true;
   }
@@ -334,7 +355,9 @@ io.on('connection', (socket) => {
     
     if (!hasMore) {
       const results = room.getResults();
-      io.to(roomId).emit('gameFinished', { results, finalState: room.getGameState() });
+      const finalState = room.getGameState();
+      finalState.results = results;
+      io.to(roomId).emit('gameFinished', { results, finalState });
     } else {
       io.to(roomId).emit('gameStateUpdated', room.getGameState());
     }
