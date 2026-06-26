@@ -22,18 +22,18 @@ class GameRoom {
     this.settings = {
       maxPlayers: settings.maxPlayers || 4,
       totalRounds: settings.totalRounds || 10,
-      maxTimePerTurn: settings.maxTimePerTurn || 120,
       smuggleLimit: settings.smuggleLimit || 100,
       startingATM: settings.startingATM || 300
     };
     
     this.players = {};
-    this.status = 'lobby'; // lobby, teamSelection, roleSelection, playing, finished
+    this.status = 'teamSelection'; // teamSelection, playing, finished
     this.currentRound = 0;
     this.gameHistory = [];
     this.teamA = [];
     this.teamB = [];
-    this.currentSmugglerTeam = 'A'; // Which team is smuggling this round
+    this.currentSmugglerTeam = 'A';
+    this.currentTurnData = null;
   }
 
   addPlayer(playerId, name) {
@@ -41,7 +41,6 @@ class GameRoom {
       id: playerId,
       name: name,
       team: null,
-      role: null,
       atm: this.settings.startingATM,
       bank: 100,
       totalSmuggled: 0,
@@ -61,97 +60,142 @@ class GameRoom {
       teamA: this.teamA,
       teamB: this.teamB,
       currentSmugglerTeam: this.currentSmugglerTeam,
-      playerCount: Object.keys(this.players).length
+      playerCount: Object.keys(this.players).length,
+      currentTurnData: this.currentTurnData,
+      gameHistory: this.gameHistory
     };
   }
 
-  getPlayerList() {
-    return Object.values(this.players).map(p => ({
-      id: p.id,
-      name: p.name,
-      team: p.team,
-      role: p.role,
-      atm: p.atm,
-      bank: p.bank
-    }));
-  }
-
   setPlayerTeam(playerId, team) {
-    if (this.players[playerId]) {
-      this.players[playerId].team = team;
-      if (team === 'A') {
-        this.teamA.push(playerId);
-      } else {
-        this.teamB.push(playerId);
+    if (!this.players[playerId]) return false;
+    
+    // Remove from old team
+    if (this.players[playerId].team === 'A') {
+      this.teamA = this.teamA.filter(id => id !== playerId);
+    } else if (this.players[playerId].team === 'B') {
+      this.teamB = this.teamB.filter(id => id !== playerId);
+    }
+    
+    // Add to new team
+    this.players[playerId].team = team;
+    if (team === 'A') {
+      this.teamA.push(playerId);
+    } else if (team === 'B') {
+      this.teamB.push(playerId);
+    }
+    
+    return true;
+  }
+
+  allPlayersHaveTeams() {
+    const count = Object.keys(this.players).length;
+    return count >= 2 && Object.values(this.players).every(p => p.team !== null);
+  }
+
+  startGame() {
+    this.status = 'playing';
+    this.currentRound = 1;
+    this.selectCurrentTurn();
+  }
+
+  selectCurrentTurn() {
+    const smugglingTeam = this.currentSmugglerTeam === 'A' ? this.teamA : this.teamB;
+    const inspectingTeam = this.currentSmugglerTeam === 'A' ? this.teamB : this.teamA;
+    
+    const smuggler = smugglingTeam[Math.floor(Math.random() * smugglingTeam.length)];
+    const inspector = inspectingTeam[Math.floor(Math.random() * inspectingTeam.length)];
+    
+    this.currentTurnData = {
+      smugglerId: smuggler,
+      inspectorId: inspector,
+      smugglerSubmitted: false,
+      inspectorSubmitted: false,
+      amount: null,
+      decision: null,
+      doubtAmount: null
+    };
+  }
+
+  submitSmugglerAmount(playerId, amount) {
+    if (!this.currentTurnData || this.currentTurnData.smugglerId !== playerId) {
+      return { success: false, error: 'Not your turn' };
+    }
+
+    const smuggler = this.players[playerId];
+    if (!smuggler || amount < 0 || amount > this.settings.smuggleLimit || amount > smuggler.atm) {
+      return { success: false, error: 'Invalid amount' };
+    }
+
+    this.currentTurnData.amount = amount;
+    this.currentTurnData.smugglerSubmitted = true;
+    return { success: true };
+  }
+
+  submitInspectorDecision(playerId, decision, doubtAmount) {
+    if (!this.currentTurnData || this.currentTurnData.inspectorId !== playerId) {
+      return { success: false, error: 'Not your turn' };
+    }
+
+    if (decision === 'doubt') {
+      if (doubtAmount < 0 || doubtAmount > 100) {
+        return { success: false, error: 'Invalid doubt amount' };
       }
-      return true;
+      this.currentTurnData.doubtAmount = doubtAmount;
     }
-    return false;
+
+    this.currentTurnData.decision = decision;
+    this.currentTurnData.inspectorSubmitted = true;
+    return { success: true };
   }
 
-  setPlayerRole(playerId, role) {
-    if (this.players[playerId]) {
-      this.players[playerId].role = role;
-      return true;
+  processTurn() {
+    if (!this.currentTurnData.smugglerSubmitted || !this.currentTurnData.inspectorSubmitted) {
+      return null;
     }
-    return false;
-  }
 
-  processTurn(smugglerId, amount, inspectorDecision, doubtAmount) {
-    const smuggler = this.players[smugglerId];
-    if (!smuggler || amount > this.settings.smuggleLimit || amount > smuggler.atm) {
-      return { success: false, error: 'Invalid smuggle amount' };
+    const smuggler = this.players[this.currentTurnData.smugglerId];
+    const inspector = this.players[this.currentTurnData.inspectorId];
+    const amount = this.currentTurnData.amount;
+    const decision = this.currentTurnData.decision;
+    const doubtAmount = this.currentTurnData.doubtAmount;
+
+    if (!smuggler || !inspector) {
+      return null;
     }
 
     // Withdraw from ATM
     smuggler.atm -= amount;
     
     let result = {
-      success: true,
-      smuggler: smuggler.name,
+      smugglerName: smuggler.name,
+      inspectorName: inspector.name,
       amount: amount,
-      decision: inspectorDecision,
-      indemnity: 0,
-      finalAmount: amount
+      decision: decision,
+      outcome: null,
+      message: ''
     };
 
-    if (inspectorDecision === 'pass') {
-      // Smuggler gets the money to bank
+    if (decision === 'pass') {
       smuggler.bank += amount;
       smuggler.totalSmuggled += amount;
-      result.outcome = 'success';
-    } else if (inspectorDecision === 'doubt') {
-      // Inspector doubted
-      const inspectorTeam = smuggler.team === 'A' ? 'B' : 'A';
-      const inspectorPlayers = smuggler.team === 'A' ? this.teamB : this.teamA;
-
-      if (doubtAmount === 0) {
-        // Case was empty, inspector pays indemnity
-        const indemnity = 0; // No money, so no indemnity
-        result.outcome = 'empty_case';
-        result.indemnity = indemnity;
-      } else if (doubtAmount >= amount) {
-        // Inspector called correctly or over
-        result.outcome = 'caught';
-        result.finalAmount = doubtAmount;
-        
-        // Distribute caught money to all inspector team members
-        const amountPerInspector = Math.floor(doubtAmount / inspectorPlayers.length);
-        inspectorPlayers.forEach(inspectorId => {
-          if (this.players[inspectorId]) {
-            this.players[inspectorId].bank += amountPerInspector;
-            this.players[inspectorId].collectedFromEnemies += amountPerInspector;
-          }
-        });
-      } else {
-        // Smuggler has more than doubted amount
-        const indemnity = Math.floor((doubtAmount) / 2);
+      result.outcome = 'passed';
+      result.message = `✈️ ${smuggler.name} a passé avec ${amount}!`;
+    } else if (decision === 'doubt') {
+      if (doubtAmount > amount) {
+        // Smuggler escaped with indemnity
+        const indemnity = Math.floor(doubtAmount / 2);
         smuggler.bank += amount + indemnity;
         smuggler.totalSmuggled += amount;
         smuggler.totalIndemnity += indemnity;
-        result.outcome = 'escaped_with_indemnity';
+        result.outcome = 'escaped';
         result.indemnity = indemnity;
-        result.finalAmount = amount + indemnity;
+        result.message = `💰 ${smuggler.name} a échappé! ${amount} + ${indemnity} indemnité`;
+      } else {
+        // Inspector caught it
+        inspector.bank += amount;
+        inspector.collectedFromEnemies += amount;
+        result.outcome = 'caught';
+        result.message = `🚨 ${inspector.name} a attrapé ${smuggler.name}! +${amount}`;
       }
     }
 
@@ -159,31 +203,16 @@ class GameRoom {
     return result;
   }
 
-  finishRound() {
-    // Remaining ATM money goes to opposing team
-    const teamARemaining = this.teamA.reduce((sum, pId) => sum + this.players[pId].atm, 0);
-    const teamBRemaining = this.teamB.reduce((sum, pId) => sum + this.players[pId].atm, 0);
-
-    // Distribute opponent's remaining money
-    this.teamA.forEach(pId => {
-      this.players[pId].bank += Math.floor(teamBRemaining / this.teamA.length);
-    });
-    
-    this.teamB.forEach(pId => {
-      this.players[pId].bank += Math.floor(teamARemaining / this.teamB.length);
-    });
-
-    // Reset ATMs for next round
-    this.teamA.forEach(pId => {
-      this.players[pId].atm = this.settings.startingATM;
-    });
-    
-    this.teamB.forEach(pId => {
-      this.players[pId].atm = this.settings.startingATM;
-    });
-
+  nextTurn() {
     this.currentRound++;
+    if (this.currentRound > this.settings.totalRounds) {
+      this.status = 'finished';
+      return false;
+    }
+
     this.currentSmugglerTeam = this.currentSmugglerTeam === 'A' ? 'B' : 'A';
+    this.selectCurrentTurn();
+    return true;
   }
 
   getResults() {
@@ -207,7 +236,7 @@ io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
 
   socket.on('createRoom', (data) => {
-    const roomId = Math.random().toString(36).substring(7);
+    const roomId = Math.random().toString(36).substring(7).toUpperCase();
     const room = new GameRoom(roomId, data.settings || {});
     games[roomId] = room;
     
@@ -250,47 +279,64 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('gameStateUpdated', room.getGameState());
   });
 
-  socket.on('selectRole', (data) => {
-    const { roomId, role } = data;
-    const room = games[roomId];
-    
-    if (!room) return;
-    room.setPlayerRole(socket.id, role);
-    io.to(roomId).emit('gameStateUpdated', room.getGameState());
-  });
-
   socket.on('startGame', (roomId) => {
     const room = games[roomId];
-    if (!room) return;
+    if (!room || !room.allPlayersHaveTeams()) {
+      socket.emit('error', 'Not all players have selected teams');
+      return;
+    }
     
-    room.status = 'playing';
-    room.currentRound = 1;
+    room.startGame();
     io.to(roomId).emit('gameStarted', room.getGameState());
   });
 
-  socket.on('submitTurn', (data) => {
-    const { roomId, amount, decision, doubtAmount } = data;
+  socket.on('submitSmugglerAmount', (data) => {
+    const { roomId, amount } = data;
     const room = games[roomId];
     
     if (!room) return;
     
-    const result = room.processTurn(socket.id, amount, decision, doubtAmount);
-    io.to(roomId).emit('turnProcessed', result);
+    const result = room.submitSmugglerAmount(socket.id, amount);
+    if (!result.success) {
+      socket.emit('error', result.error);
+      return;
+    }
+
     io.to(roomId).emit('gameStateUpdated', room.getGameState());
+    io.to(roomId).emit('notification', `📦 Le smuggleur a préparer sa valise...`);
   });
 
-  socket.on('finishRound', (roomId) => {
+  socket.on('submitInspectorDecision', (data) => {
+    const { roomId, decision, doubtAmount } = data;
+    const room = games[roomId];
+    
+    if (!room) return;
+    
+    const result = room.submitInspectorDecision(socket.id, decision, doubtAmount);
+    if (!result.success) {
+      socket.emit('error', result.error);
+      return;
+    }
+
+    // Both submitted, process turn
+    if (room.currentTurnData.smugglerSubmitted && room.currentTurnData.inspectorSubmitted) {
+      const turnResult = room.processTurn();
+      io.to(roomId).emit('turnCompleted', turnResult);
+      io.to(roomId).emit('gameStateUpdated', room.getGameState());
+    }
+  });
+
+  socket.on('nextTurn', (roomId) => {
     const room = games[roomId];
     if (!room) return;
     
-    room.finishRound();
+    const hasMore = room.nextTurn();
     
-    if (room.currentRound > room.settings.totalRounds) {
-      room.status = 'finished';
+    if (!hasMore) {
       const results = room.getResults();
       io.to(roomId).emit('gameFinished', { results, finalState: room.getGameState() });
     } else {
-      io.to(roomId).emit('roundFinished', room.getGameState());
+      io.to(roomId).emit('gameStateUpdated', room.getGameState());
     }
   });
 
